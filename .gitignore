@@ -22,3 +22,20 @@ data/
 # System files
 .DS_Store
 Thumbs.db
+
+# Vite build + cache
+Frontend/.vite/
+Frontend/dist/
+
+# Backend temporary files
+Backend/debug.log
+Backend/temp/
+Backend/*.sqlite-journal
+
+# IDE settings
+.vscode/
+.idea/
+
+# Windows junk
+Desktop.ini
+

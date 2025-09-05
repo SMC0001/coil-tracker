@@ -3904,12 +3904,14 @@ app.get("/api/_health/db", async (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
-// Serve frontend (only if build exists)
-const publicDir = path.join(__dirname, "public");
-if (fs.existsSync(publicDir)) {
-  app.use(express.static(publicDir));
+// Serve frontend (React build)
+const frontendPath = path.join(__dirname, "../Frontend/dist");
+if (fs.existsSync(frontendPath)) {
+  app.use(express.static(frontendPath));
+
+  // Catch-all → send React index.html
   app.get(/^(?!\/api).*/, (_req, res) => {
-    res.sendFile(path.join(publicDir, "index.html"));
+    res.sendFile(path.join(frontendPath, "index.html"));
   });
 }
 
