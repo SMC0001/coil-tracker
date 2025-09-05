@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+/* quick visual test so you can see it’s working */
+body { background: #f1f5f9; }     /* light gray */
+h1 { font-weight: 700; }
