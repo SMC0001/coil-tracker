@@ -270,6 +270,20 @@ try {
   console.error("Error seeding admin user:", err);
 }
 
+// ✅ Seed demo PL Stock if empty
+try {
+  const anyPlStock = db.prepare("SELECT id FROM pl_stock LIMIT 1").get();
+  if (!anyPlStock) {
+    db.prepare(`
+      INSERT INTO pl_stock (source_type, source_id, grade, size_mm, weight_kg, qty, production_date, operator)
+      VALUES (?,?,?,?,?,?,?,?)
+    `).run("circle", 1, "304", 1500, 500, 1, new Date().toISOString(), "System");
+    console.log("🌱 Seeded sample pl_stock");
+  }
+} catch (e) {
+  console.error("PL Stock seeding failed:", e);
+}
+
 
 // ========================== AUTH ROUTES ========================== //
 
