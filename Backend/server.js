@@ -3958,6 +3958,16 @@ app.get("/api/debug/users", (req, res) => {
   }
 });
 
+// 🚨 DEBUG ONLY — remove later
+app.get("/api/debug/pl-stock", (req, res) => {
+  try {
+    const rows = db.prepare("SELECT * FROM pl_stock").all();
+    res.json(rows);
+  } catch (err) {
+    console.error("Debug PL Stock failed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.listen(PORT, () => console.log("API running on :" + PORT));
 
