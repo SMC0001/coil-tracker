@@ -3861,13 +3861,12 @@ const EXPORTS = [
 ];
 
 // Export "all" → redirect to bulk exporter
-app.get('/api/export/all', auth(), (_req, res) => {
+app.get('/api/export/all', (_req, res) => {
   res.redirect(307, '/api/export-all');
 });
 
-
 // Export one tab only
-app.get('/api/export/:tab', auth(), (req, res) => {
+app.get('/api/export/:tab', (req, res) => {
   try {
     const def = EXPORTS.find(e =>
       e.key === String(req.params.tab).toLowerCase() ||
@@ -3890,9 +3889,8 @@ app.get('/api/export/:tab', auth(), (req, res) => {
   }
 });
 
-
 // Export ALL tabs into one workbook
-app.get('/api/export-all', auth(), (req, res) => {
+app.get('/api/export-all', (req, res) => {
   try {
     const wb = new ExcelJS.Workbook();
     for (const def of EXPORTS) {
