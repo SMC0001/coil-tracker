@@ -15,19 +15,19 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-/* ----------------- DB bootstrap ----------------- */
-// For free Render: use local project folder (ephemeral storage)
-const dbPath = process.env.DB_PATH || path.join(__dirname, "tracker.db");
-
+// ---------------- DB bootstrap ----------------
+const dbPath = path.join(__dirname, "tracker.db");  // ✅ always local file for free Render
 console.log("Using DB at:", dbPath);
 
 const db = new Database(dbPath);
 
+// load schema if exists
 const schemaPath = path.join(__dirname, "schema.sql");
 if (fs.existsSync(schemaPath)) {
-  const schema = fs.readFileSync(schemaPath, 'utf8');
+  const schema = fs.readFileSync(schemaPath, "utf8");
   db.exec(schema);
 }
+
 
 // light migrations (safe if already exist)
 try { db.prepare(`ALTER TABLE coils ADD COLUMN purchase_date TEXT`).run(); } catch {}
