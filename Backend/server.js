@@ -3904,16 +3904,23 @@ app.get("/api/_health/db", async (req, res) => {
   }
 })();
 
+// Serve frontend build
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log('API running on :' + PORT));
 
-
-/* --------------------------- Static frontend serve ------------------------ */
-const publicDir = path.join(__dirname, 'public');
+// Serve frontend (only if build exists)
+const publicDir = path.join(__dirname, "public");
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
   app.get(/^(?!\/api).*/, (_req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
+    res.sendFile(path.join(publicDir, "index.html"));
   });
 }
+
+app.listen(PORT, () => console.log("API running on :" + PORT));
+
