@@ -16,7 +16,7 @@ axios.interceptors.request.use((config) => {
 });
 
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+const API = import.meta.env.VITE_API_URL || "/api";
 const GRADES = ["304", "430", "204CU", "DD", "SDM"];
 const OPERATORS = ["Duta", "Jay Prakash", "Majesh", "Ram Patel", "Sunil"];
 
