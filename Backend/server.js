@@ -16,18 +16,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-/* ------------------------------ DB bootstrap ------------------------------ */
-if (!fs.existsSync('./data')) fs.mkdirSync('./data');
+//* ------------------------------ DB bootstrap ------------------------------ */
+const dbFolder = path.join(__dirname, "data");
+if (!fs.existsSync(dbFolder)) fs.mkdirSync(dbFolder, { recursive: true });
 
-const dbPath = process.env.DB_PATH || "./data/tracker.db";
-
-// make sure folder exists
-const dir = dbPath.substring(0, dbPath.lastIndexOf("/"));
-if (dir && !fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+const dbPath = process.env.DB_PATH || path.join(dbFolder, "tracker.db");
 
 const db = new Database(dbPath);
 
-const schemaPath = './schema.sql';
+const schemaPath = path.join(__dirname, "schema.sql");
 if (fs.existsSync(schemaPath)) {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   db.exec(schema);
