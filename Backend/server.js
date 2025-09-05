@@ -3933,5 +3933,17 @@ if (fs.existsSync(frontendPath)) {
   });
 }
 
+// 🚨 DEBUG ONLY: List all users (remove after debugging!)
+app.get("/debug/users", (req, res) => {
+  try {
+    const users = db.prepare("SELECT id, username, role FROM users").all();
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ error: "Could not fetch users" });
+  }
+});
+
+
 app.listen(PORT, () => console.log("API running on :" + PORT));
 
