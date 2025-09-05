@@ -3906,9 +3906,6 @@ app.get("/api/_health/db", async (req, res) => {
 
 // Serve frontend build
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const PORT = process.env.PORT || 4000;
 
 // Serve frontend (only if build exists)
