@@ -1,13 +1,12 @@
 // server.js
-console.log('Starting Tracker App Backend - Version 1.2.3'); // Unique identifier
+console.log('Starting Tracker App Backend - Version 1.2.4'); // updated version
 import express from 'express';
 import cors from 'cors';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { query } from "./db.js";   // ✅ uses the Pool from db.js
-
+import { query } from "./db.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,11 +15,11 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-//* ------------------------------ DB bootstrap ------------------------------ */
-const dbFolder = path.join(__dirname, "data");
-if (!fs.existsSync(dbFolder)) fs.mkdirSync(dbFolder, { recursive: true });
+/* ----------------- DB bootstrap ----------------- */
+// For free Render: use local project folder (ephemeral storage)
+const dbPath = process.env.DB_PATH || path.join(__dirname, "tracker.db");
 
-const dbPath = process.env.DB_PATH || path.join(dbFolder, "tracker.db");
+console.log("Using DB at:", dbPath);
 
 const db = new Database(dbPath);
 
