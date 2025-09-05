@@ -1024,94 +1024,83 @@ function coilSummaryRowStrict(coilId) {
   };
 }
 
-// Create coil purchase (now supports purchase_price ₹/kg)
+// Create coil purchase (supports purchase_price ₹/kg)
 app.post('/api/coils/purchase', auth(), (req, res) => {
-  const {
-    grade,
-    thickness,
-    width,
-    supplier,
-    heat_no,
-    purchase_weight_kg,
-    purchase_date,
+  try {
+    const {
+      grade,
+      thickness,
+      width,
+      supplier,
+      heat_no,
+      purchase_weight_kg,
+      purchase_date,
 
-    // accept both snake_case and camelCase from the UI
-    purchase_price: purchase_price_snake,
-    purchasePrice
-  } = req.body;
+      // accept both snake_case and camelCase from the UI
+      purchase_price: purchase_price_snake,
+      purchasePrice
+    } = req.body;
 
-  const normalizedPrice = purchase_price_snake ?? purchasePrice;
-  const priceVal =
-    (normalizedPrice === undefined || normalizedPrice === '')
-      ? null
-      : Number(normalizedPrice);
+    // Normalize price input
+    const normalizedPrice = purchase_price_snake ?? purchasePrice;
+    const priceVal =
+      (normalizedPrice === undefined || normalizedPrice === '')
+        ? null
+        : Number(normalizedPrice);
 
-  if (!purchase_weight_kg || purchase_weight_kg <= 0) {
-    return res.status(400).json({ error: 'purchase_weight_kg must be > 0' });
+    if (!purchase_weight_kg || purchase_weight_kg <= 0) {
+      return res.status(400).json({ error: 'purchase_weight_kg must be > 0' });
+    }
+
+    const rn = nextRN();
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Insert into coils
+    const info = run(
+      `INSERT INTO coils(
+         rn, grade, thickness, width, supplier, heat_no,
+         purchase_weight_kg, purchase_date, purchase_price
+       ) VALUES (?,?,?,?,?,?,?,?,?)`,
+      [
+        rn,
+        grade || null,
+        thickness || null,
+        width || null,
+        supplier || null,
+        heat_no || null,
+        Number(purchase_weight_kg),
+        purchase_date || today,
+        priceVal
+      ]
+    );
+
+    const newCoil = get(`SELECT * FROM coils WHERE id=?`, [info.lastInsertRowid]);
+
+    // ✅ Single insert into coil_stock
+    run(
+      `INSERT INTO coil_stock(
+         coil_id, rn, grade, thickness, width, supplier, purchase_date,
+         initial_weight_kg, available_weight_kg, purchase_price, created_at, updated_at
+       ) VALUES (?,?,?,?,?,?,?,?,?,?, datetime('now'), datetime('now'))`,
+      [
+        newCoil.id,
+        newCoil.rn,
+        newCoil.grade || null,
+        newCoil.thickness || null,
+        newCoil.width || null,
+        newCoil.supplier || null,
+        newCoil.purchase_date || today,
+        newCoil.purchase_weight_kg,
+        newCoil.purchase_weight_kg, // initially available = full purchase weight
+        priceVal
+      ]
+    );
+
+    res.json(newCoil);
+  } catch (err) {
+    console.error("❌ Coil purchase failed:", err.message);
+    res.status(500).json({ error: err.message });
   }
-
-  const rn = nextRN();
-  const today = new Date().toISOString().slice(0, 10);
-
-  // Insert into coils (includes purchase_price)
-  const info = run(
-    `INSERT INTO coils(
-       rn, grade, thickness, width, supplier, heat_no,
-       purchase_weight_kg, purchase_date, purchase_price
-     ) VALUES (?,?,?,?,?,?,?,?,?)`,
-    [
-      rn,
-      grade || null,
-      thickness || null,
-      width || null,
-      supplier || null,
-      heat_no || null,
-      Number(purchase_weight_kg),
-      purchase_date || today,
-      priceVal
-    ]
-  );
-
-run(
-  `INSERT INTO coil_stock(coil_id, rn, grade, thickness, width, supplier, purchase_date, initial_weight_kg, available_weight_kg, purchase_price, created_at, updated_at)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-  [
-    info.lastInsertRowid,
-    rn,
-    grade,
-    thickness,
-    width,
-    supplier,
-    purchase_date,
-    purchase_weight_kg,
-    purchase_weight_kg, // initially available = full purchase weight
-    purchase_price
-  ]
-);
-
-  const newCoil = get(`SELECT * FROM coils WHERE id=?`, [info.lastInsertRowid]);
-
-  // Mirror into coil_stock (also store purchase_price)
-  run(
-    `INSERT INTO coil_stock(
-       coil_id, rn, grade, thickness, width, supplier, purchase_date,
-       initial_weight_kg, available_weight_kg, purchase_price
-     ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [
-      newCoil.id,
-      newCoil.rn,
-      newCoil.grade || null,
-      newCoil.thickness || null,
-      newCoil.width || null,
-      newCoil.supplier || null,
-      newCoil.purchase_date || null,
-      newCoil.purchase_weight_kg,
-      newCoil.purchase_weight_kg,
-      newCoil.purchase_price || null
-    ]
-  );
-
-  res.json(newCoil);
 });
 
 // List coils
