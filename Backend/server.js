@@ -253,6 +253,24 @@ try {
   console.error("Error creating users table:", err);
 }
 
+// ✅ Auto-create default admin if not exists
+try {
+  const admin = db.prepare("SELECT * FROM users WHERE username = ?").get("admin");
+
+  if (!admin) {
+    const hashedPassword = bcrypt.hashSync("Admin@123", 10);
+    db.prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)").run(
+      "admin",
+      hashedPassword,
+      "admin"
+    );
+    console.log("✅ Default admin created: username=admin, password=admin123");
+  }
+} catch (err) {
+  console.error("Error seeding admin user:", err);
+}
+
+
 // ========================== AUTH ROUTES ========================== //
 
 // Signup route (for creating new users)
