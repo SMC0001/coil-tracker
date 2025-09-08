@@ -4864,12 +4864,14 @@ function PlanningTab() {
       // --- Aggregate order data ---
       for (const o of orders) {
         const thicknessVal = o.thickness ?? o.thickness_mm ?? null;
-        const key = `${o.grade}-${thicknessVal}`;
+        const sizeVal = o.size ?? o.circle_size ?? null; // include circle size
+        const key = `${o.grade}-${thicknessVal}-${sizeVal}`;
 
         if (!summary[key]) {
           summary[key] = {
             grade: o.grade,
             thickness: thicknessVal,
+            size: sizeVal,
             ordered: 0,
             fulfilled: 0,
             circle: 0,
@@ -4884,34 +4886,29 @@ function PlanningTab() {
         summary[key].fulfilled += fulfilledVal;
       }
 
-      // --- Circle stock aggregation ---
+      // --- Circle stock aggregation (only deduct if size matches) ---
       for (const c of circleStock) {
         const thicknessVal = c.thickness ?? c.thickness_mm ?? null;
-        const key = `${c.grade}-${thicknessVal}`;
+        const sizeVal = c.size ?? c.circle_size ?? null;
+        const key = `${c.grade}-${thicknessVal}-${sizeVal}`;
 
-        if (!summary[key]) {
-          summary[key] = {
-            grade: c.grade,
-            thickness: thicknessVal,
-            ordered: 0,
-            fulfilled: 0,
-            circle: 0,
-            coil: 0,
-          };
+        if (summary[key]) {
+          // Only add to summary if there is an order with same grade+thickness+size
+          const circleAvail = Number(c.available_weight_kg ?? c.available_kg ?? 0) || 0;
+          summary[key].circle += circleAvail;
         }
-        const circleAvail = Number(c.available_weight_kg ?? c.available_kg ?? 0) || 0;
-        summary[key].circle += circleAvail;
       }
 
-      // --- Coil stock aggregation ---
+      // --- Coil stock aggregation (no size check needed) ---
       for (const c of coilStock) {
         const thicknessVal = c.thickness ?? c.thickness_mm ?? null;
-        const key = `${c.grade}-${thicknessVal}`;
+        const key = `${c.grade}-${thicknessVal}-null`; // coil has no circle size
 
         if (!summary[key]) {
           summary[key] = {
             grade: c.grade,
             thickness: thicknessVal,
+            size: null,
             ordered: 0,
             fulfilled: 0,
             circle: 0,
@@ -4924,14 +4921,13 @@ function PlanningTab() {
 
       const usableFactor = (Number(usablePct) || 0) / 100;
 
-      // --- Build rows (coil usable for both display and calculation) ---
+      // --- Build rows ---
       const out = Object.values(summary).map((s) => {
         const ordered = Number(s.ordered) || 0;
         const fulfilled = Number(s.fulfilled) || 0;
         const circle = Number(s.circle) || 0;
         const coilRaw = Number(s.coil) || 0;
 
-        // Coil usable output (this will now also be shown in table)
         const coilUsableOutput = coilRaw * usableFactor;
 
         const netRemaining = Math.max((ordered - fulfilled) - circle - coilUsableOutput, 0);
@@ -4946,7 +4942,7 @@ function PlanningTab() {
           ordered,
           fulfilled,
           circle,
-          coilUsable: coilUsableOutput,  // display adjusted coil stock
+          coilUsable: coilUsableOutput,
           netRemaining,
           coilRequired,
         };
