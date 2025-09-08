@@ -1,15 +1,11 @@
 // server.js
 console.log('Starting Tracker App Backend - Version 1.2.4'); // updated version
-import express from 'express';
-import cors from 'cors';
-import Database from 'better-sqlite3';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { query } from "./db.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const express = require("express");
+const cors = require("cors");
+const Database = require("better-sqlite3");
+const fs = require("fs");
+const path = require("path");
+const { query } = require("./db.js");
 
 const app = express();
 app.use(cors());
@@ -250,8 +246,8 @@ try {
 } catch {}
 
 /* ------------------------------ AUTH SETUP ------------------------------ */
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const SECRET_KEY = process.env.JWT_SECRET || "change-me-now"; // ❗ change this to something strong
 
@@ -3277,10 +3273,8 @@ app.post('/api/coil-stock/recalc', auth('admin'), (_req, res) => {
 });
 
 // ------------------------------ Excel Exports ------------------------------
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
 const ExcelJS = require("exceljs");
-import { Readable } from 'stream';
+const { Readable } = require("stream");
 
 // helper: write rows with ordered headers
 function addSheet(workbook, name, rows, headers) {
