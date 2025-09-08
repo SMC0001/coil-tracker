@@ -872,11 +872,11 @@ function Coils({ onStartedCircle }) {
   const [editDraft, setEditDraft] = useState({});
 
   const [newCoil, setNewCoil] = useState({
+    rn: "",
     grade: "304",
     thickness: "",
     width: "",
     supplier: "",
-    heat_no: "",
     purchase_weight_kg: "",
     purchase_date: "",
     purchase_price: "",
@@ -909,26 +909,26 @@ function Coils({ onStartedCircle }) {
 
   const createCoil = async (e) => {
     e.preventDefault();
-const payload = {
-  grade: newCoil.grade || null,
-  thickness: newCoil.thickness ? Number(newCoil.thickness) : null,
-  width: newCoil.width ? Number(newCoil.width) : null,
-  supplier: newCoil.supplier || null,
-  heat_no: newCoil.heat_no || null,
-  purchase_weight_kg: Number(newCoil.purchase_weight_kg || 0),
-  purchase_date: newCoil.purchase_date || undefined,
-  purchase_price:
-    newCoil.purchase_price === "" ? null : Number(newCoil.purchase_price), // 👈 NEW
-};
+    const payload = {
+      rn: newCoil.rn || null,
+      grade: newCoil.grade || null,
+      thickness: newCoil.thickness ? Number(newCoil.thickness) : null,
+      width: newCoil.width ? Number(newCoil.width) : null,
+      supplier: newCoil.supplier || null,
+      purchase_weight_kg: Number(newCoil.purchase_weight_kg || 0),
+      purchase_date: newCoil.purchase_date || undefined,
+      purchase_price:
+        newCoil.purchase_price === "" ? null : Number(newCoil.purchase_price),
+    };
     if (!payload.purchase_weight_kg || payload.purchase_weight_kg <= 0)
       return alert("Purchase weight must be > 0");
     const res = await axios.post(`${API}/coils/purchase`, payload);
     setNewCoil({
+      rn: "",
       grade: "304",
       thickness: "",
       width: "",
       supplier: "",
-      heat_no: "",
       purchase_weight_kg: "",
       purchase_date: "",
       purchase_price: "",
@@ -952,7 +952,7 @@ const payload = {
       onStartedCircle(row.id);
     } catch (error) {
       if (error.response && error.response.status === 409) {
-        alert(error.response.data.error); // Display the backend's error message
+        alert(error.response.data.error);
       } else {
         console.error("Failed to start circle run:", error);
         alert("Failed to start circle run. Check console for details.");
@@ -978,11 +978,11 @@ const payload = {
     if (!s) return;
     setEditingCoil(true);
     setEditDraft({
+      rn: s.rn || "",
       grade: s.grade || "",
       thickness: s.thickness ?? "",
       width: s.width ?? "",
       supplier: s.supplier || "",
-      heat_no: s.heat_no || "",
       purchase_date: s.purchase_date || "",
       purchase_weight_kg: s.purchased_kg ?? "",
       purchase_price: s.purchase_price ?? "",
@@ -995,14 +995,14 @@ const payload = {
   const saveEditCoil = async () => {
     try {
       await axios.patch(`${API}/coils/${s.id}`, {
+        rn: nullIfEmpty(editDraft.rn),
         grade: nullIfEmpty(editDraft.grade),
         thickness: toNum(editDraft.thickness),
         width: toNum(editDraft.width),
         supplier: nullIfEmpty(editDraft.supplier),
-        heat_no: nullIfEmpty(editDraft.heat_no),
         purchase_date: nullIfEmpty(editDraft.purchase_date),
         purchase_weight_kg: toNum(editDraft.purchase_weight_kg),
-        purchase_price: toNum(editDraft.purchase_price), 
+        purchase_price: toNum(editDraft.purchase_price),
       });
       await loadSummary(s.id);
       await load();
@@ -1017,11 +1017,11 @@ const payload = {
 
   return (
     <div className="space-y-4">
-<Section
-  title="Coils"
-  right={
-    <div className="flex items-center gap-2">
-      <ExportSheetButton tab="coils" />
+      <Section
+        title="Coils"
+        right={
+          <div className="flex items-center gap-2">
+            <ExportSheetButton tab="coils" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -1060,6 +1060,12 @@ const payload = {
           onSubmit={createCoil}
           className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
         >
+          <Input
+            label="S.No."
+            value={newCoil.rn}
+            onChange={(e) => setNewCoil({ ...newCoil, rn: e.target.value })}
+            required
+          />
           <label className="text-sm">
             <div className="text-slate-600 mb-1">Grade</div>
             <select
@@ -1093,13 +1099,6 @@ const payload = {
               setNewCoil({ ...newCoil, supplier: e.target.value })
             }
           />
-          <Input
-            label="Heat No."
-            value={newCoil.heat_no}
-            onChange={(e) =>
-              setNewCoil({ ...newCoil, heat_no: e.target.value })
-            }
-          />
           <NumberInput
             label="Purchase Weight (kg)"
             required
@@ -1116,7 +1115,6 @@ const payload = {
               setNewCoil({ ...newCoil, purchase_date: e.target.value })
             }
           />
-
           <NumberInput
             label="Purchase Price (₹/kg)"
             value={newCoil.purchase_price}
@@ -1124,7 +1122,6 @@ const payload = {
               setNewCoil({ ...newCoil, purchase_price: e.target.value })
             }
           />
-
           <div>
             <button className="bg-sky-600 text-white rounded-lg px-3 py-2 w-full h-full">
               Save
@@ -1170,7 +1167,9 @@ const payload = {
                   <td>{row.purchase_date || "—"}</td>
                   <td className="text-right">{fmt(row.purchased_kg)}</td>
                   <td className="text-right">
-                    {row.purchase_price == null ? "—" : Number(row.purchase_price).toFixed(2)}
+                    {row.purchase_price == null
+                      ? "—"
+                      : Number(row.purchase_price).toFixed(2)}
                   </td>
                   <td className="text-right">{fmt(row.direct_sold_kg)}</td>
                   <td className="text-right">{fmt(row.circles_kg)}</td>
@@ -1232,14 +1231,14 @@ const payload = {
                       <b>Supplier:</b> {s.supplier || "—"}
                     </div>
                     <div>
-                      <b>Heat No.:</b> {s.heat_no || "—"}
-                    </div>
-                    <div>
                       <b>Purchased On:</b> {s.purchase_date || "—"}
                     </div>
-                   <div>
+                    <div>
                       <b>Purchase Price:</b>{" "}
-                      {s.purchase_price == null ? "—" : Number(s.purchase_price).toFixed(2)} ₹/kg
+                      {s.purchase_price == null
+                        ? "—"
+                        : Number(s.purchase_price).toFixed(2)}{" "}
+                      ₹/kg
                     </div>
                     <div>
                       <b>Last Sale Date:</b> {fmtDate(s.last_sale_at)}
@@ -1254,6 +1253,13 @@ const payload = {
                 </>
               ) : (
                 <div className="text-sm space-y-2">
+                  <Input
+                    label="S.No."
+                    value={editDraft.rn}
+                    onChange={(e) =>
+                      setEditDraft({ ...editDraft, rn: e.target.value })
+                    }
+                  />
                   <Input
                     label="Grade"
                     value={editDraft.grade}
@@ -1283,13 +1289,6 @@ const payload = {
                     }
                   />
                   <Input
-                    label="Heat No."
-                    value={editDraft.heat_no}
-                    onChange={(e) =>
-                      setEditDraft({ ...editDraft, heat_no: e.target.value })
-                    }
-                  />
-                  <Input
                     label="Purchase Date"
                     type="date"
                     value={editDraft.purchase_date}
@@ -1314,7 +1313,10 @@ const payload = {
                     label="Purchase Price (₹/kg)"
                     value={editDraft.purchase_price}
                     onChange={(e) =>
-                      setEditDraft({ ...editDraft, purchase_price: e.target.value })
+                      setEditDraft({
+                        ...editDraft,
+                        purchase_price: e.target.value,
+                      })
                     }
                   />
                   <div className="flex gap-2">

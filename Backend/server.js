@@ -64,6 +64,10 @@ try { db.prepare(`ALTER TABLE patta_runs ADD COLUMN grade TEXT`).run(); } catch 
 // ✅ orders table migrations (idempotent) — add missing columns safely
 try { db.prepare(`ALTER TABLE orders ADD COLUMN order_by TEXT`).run(); } catch {}
 
+// ✅ Ensure RN column exists and is unique
+try { db.prepare(`ALTER TABLE coils ADD COLUMN rn TEXT`).run(); } catch {}
+try { db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coils_rn ON coils(rn)`).run(); } catch {}
+
 // ✅ cancellations (idempotent, no reason)
 try { db.prepare(`ALTER TABLE orders ADD COLUMN cancelled_at TEXT`).run(); } catch {}
 
@@ -1037,15 +1041,13 @@ function coilSummaryRowStrict(coilId) {
 app.post('/api/coils/purchase', auth(), (req, res) => {
   try {
     const {
+      rn,
       grade,
       thickness,
       width,
       supplier,
-      heat_no,
       purchase_weight_kg,
       purchase_date,
-
-      // accept both snake_case and camelCase from the UI
       purchase_price: purchase_price_snake,
       purchasePrice
     } = req.body;
@@ -1061,22 +1063,28 @@ app.post('/api/coils/purchase', auth(), (req, res) => {
       return res.status(400).json({ error: 'purchase_weight_kg must be > 0' });
     }
 
-    const rn = nextRN();
+// Prevent duplicate RN
+if (rn) {
+  const existing = get(`SELECT id FROM coils WHERE rn = ?`, [rn]);
+  if (existing) {
+    return res.status(400).json({ error: `S.No. ${rn} already exists` });
+  }
+}
+
     const today = new Date().toISOString().slice(0, 10);
 
     // Insert into coils
     const info = run(
       `INSERT INTO coils(
-         rn, grade, thickness, width, supplier, heat_no,
+         rn, grade, thickness, width, supplier,
          purchase_weight_kg, purchase_date, purchase_price
-       ) VALUES (?,?,?,?,?,?,?,?,?)`,
+       ) VALUES (?,?,?,?,?,?,?,?)`,
       [
-        rn,
+        rn || null,
         grade || null,
         thickness || null,
         width || null,
         supplier || null,
-        heat_no || null,
         Number(purchase_weight_kg),
         purchase_date || today,
         priceVal
@@ -1100,7 +1108,7 @@ app.post('/api/coils/purchase', auth(), (req, res) => {
         newCoil.supplier || null,
         newCoil.purchase_date || today,
         newCoil.purchase_weight_kg,
-        newCoil.purchase_weight_kg, // initially available = full purchase weight
+        newCoil.purchase_weight_kg,
         priceVal
       ]
     );
@@ -1111,6 +1119,7 @@ app.post('/api/coils/purchase', auth(), (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // List coils
 app.get('/api/coils', auth(), (req, res) => {
@@ -1140,7 +1149,7 @@ app.get('/api/coils/:id/summary', auth(), (req, res) => {
 
 // Edit coil (sync coil_stock)
 app.patch('/api/coils/:id', auth('admin'), (req, res) => {
-  const allowed = ['grade', 'thickness', 'width', 'supplier', 'heat_no', 'purchase_weight_kg', 'purchase_date', 'purchase_price'];
+  const allowed = ['rn', 'grade', 'thickness', 'width', 'supplier', 'purchase_weight_kg', 'purchase_date', 'purchase_price'];
   const fields = [], p = [];
   const before = get(`SELECT * FROM coils WHERE id=?`, [req.params.id]);
   if (!before) return res.status(404).json({ error: 'Coil not found' });
