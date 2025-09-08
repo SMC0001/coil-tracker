@@ -15,19 +15,37 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
-// ---------------- DB bootstrap ----------------
-const dbPath = path.join(__dirname, "tracker.db");  // ✅ always local file for free Render
-console.log("Using DB at:", dbPath);
-
-const db = new Database(dbPath);
-
-// load schema if exists
+// ---------------- DB bootstrap (PERSISTENT DISK) ----------------
+const PERSIST_DIR = process.env.DB_DIR || "/data";                // Render disk mount path
+const DB_PATH = path.join(PERSIST_DIR, "tracker.db");             // /data/tracker.db
+const LEGACY_DB_PATH = path.join(__dirname, "tracker.db");        // old location (if any)
 const schemaPath = path.join(__dirname, "schema.sql");
-if (fs.existsSync(schemaPath)) {
-  const schema = fs.readFileSync(schemaPath, "utf8");
-  db.exec(schema);
+
+// ensure /data exists (safe if already mounted)
+try { fs.mkdirSync(PERSIST_DIR, { recursive: true }); } catch {}
+
+// one-time migration: copy old ./tracker.db → /data/tracker.db if needed
+try {
+  if (!fs.existsSync(DB_PATH) && fs.existsSync(LEGACY_DB_PATH)) {
+    fs.copyFileSync(LEGACY_DB_PATH, DB_PATH);
+    console.log("✅ Migrated DB from ./tracker.db → /data/tracker.db");
+  }
+} catch (e) {
+  console.error("DB migration copy failed:", e.message);
 }
 
+console.log("Using DB at:", DB_PATH);
+const db = new Database(DB_PATH);
+
+// apply schema if present (idempotent)
+if (fs.existsSync(schemaPath)) {
+  try {
+    const schema = fs.readFileSync(schemaPath, "utf8");
+    db.exec(schema);
+  } catch (e) {
+    console.error("Schema init failed:", e.message);
+  }
+}
 
 // light migrations (safe if already exist)
 try { db.prepare(`ALTER TABLE coils ADD COLUMN purchase_date TEXT`).run(); } catch {}
