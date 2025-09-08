@@ -39,3 +39,9 @@ Backend/*.sqlite-journal
 # Windows junk
 Desktop.ini
 
+# Ignore SQLite DBs
+*.db
+Backend/data/
+Backend/tracker.db
+
+
