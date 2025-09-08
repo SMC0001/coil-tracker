@@ -1147,33 +1147,47 @@ app.get('/api/coils/:id/summary', auth(), (req, res) => {
   res.json(s);
 });
 
-// Edit coil (sync coil_stock)
+// Edit coil (sync coil_stock and propagate changes)
 app.patch('/api/coils/:id', auth('admin'), (req, res) => {
-  const allowed = ['rn', 'grade', 'thickness', 'width', 'supplier', 'purchase_weight_kg', 'purchase_date', 'purchase_price'];
+  const allowed = [
+    'rn', 'grade', 'thickness', 'width',
+    'supplier', 'purchase_weight_kg',
+    'purchase_date', 'purchase_price'
+  ];
   const fields = [], p = [];
   const before = get(`SELECT * FROM coils WHERE id=?`, [req.params.id]);
   if (!before) return res.status(404).json({ error: 'Coil not found' });
 
-  for (const k of allowed) if (k in req.body) { fields.push(`${k}=?`); p.push(req.body[k]); }
-  if (!fields.length) return res.json(before);
+  for (const k of allowed) {
+    if (k in req.body) {
+      fields.push(`${k}=?`);
+      p.push(req.body[k]);
+    }
+  }
+  if (!fields.length) return res.json(coilSummaryRow(before.id));
   p.push(req.params.id);
+
+  // Update coils table
   run(`UPDATE coils SET ${fields.join(', ')} WHERE id=?`, p);
   const after = get(`SELECT * FROM coils WHERE id=?`, [req.params.id]);
 
-  // Sync coil_stock
+  // ✅ Sync coil_stock
   const cs = get(`SELECT * FROM coil_stock WHERE coil_id=?`, [after.id]);
   if (cs) {
     let available = cs.available_weight_kg;
     let initial = cs.initial_weight_kg;
+
     if ('purchase_weight_kg' in req.body && req.body.purchase_weight_kg != null) {
       const newInitial = Number(req.body.purchase_weight_kg);
       const delta = newInitial - initial;
       initial = newInitial;
       available = Math.max(0, available + delta);
     }
+
     run(`
       UPDATE coil_stock
-      SET rn=?, grade=?, thickness=?, width=?, supplier=?, purchase_date=?, initial_weight_kg=?, available_weight_kg=?, purchase_price=?, updated_at=datetime('now')
+      SET rn=?, grade=?, thickness=?, width=?, supplier=?, purchase_date=?,
+          initial_weight_kg=?, available_weight_kg=?, purchase_price=?, updated_at=datetime('now')
       WHERE coil_id=?`,
       [
         after.rn, after.grade || null, after.thickness || null, after.width || null,
@@ -1183,35 +1197,34 @@ app.patch('/api/coils/:id', auth('admin'), (req, res) => {
     );
   }
 
-  // ✅ Cascade updates into dependent runs and stocks
-  if ('grade' in req.body || 'thickness' in req.body || 'width' in req.body) {
-    run(`
-      UPDATE circle_runs
-      SET grade = COALESCE(?, grade),
-          thickness = COALESCE(?, thickness)
-      WHERE coil_id = ?`,
-      [after.grade, after.thickness, after.id]
-    );
+  // ✅ Sync circle_runs (grade, thickness, width)
+  run(`
+    UPDATE circle_runs
+    SET grade=?, thickness=?, width=?
+    WHERE coil_id=?`,
+    [after.grade || null, after.thickness || null, after.width || null, after.id]
+  );
 
-    run(`
-      UPDATE patta_runs
-      SET grade = COALESCE(?, grade),
-          thickness = COALESCE(?, thickness)
-      WHERE source_type='circle'
-        AND patta_source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
-      [after.grade, after.thickness, after.id]
-    );
+  // ✅ Sync patta_runs (grade, thickness) if derived from this coil
+  run(`
+    UPDATE patta_runs
+    SET grade=?, thickness=?
+    WHERE source_type='circle'
+      AND patta_source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
+    [after.grade || null, after.thickness || null, after.id]
+  );
 
-    run(`
-      UPDATE circle_stock
-      SET grade = ?
-      WHERE source_type='circle'
-        AND source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
-      [after.grade, after.id]
-    );
-  }
+  // ✅ Sync circle_stock (grade, thickness, width)
+  run(`
+    UPDATE circle_stock
+    SET grade=?, size_mm=?, updated_at=datetime('now')
+    WHERE source_type='circle'
+      AND source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
+    [after.grade || null, after.width || null, after.id]
+  );
 
-  res.json(after);
+  // ✅ Return same shape as /coils/:id/summary
+  res.json(coilSummaryRow(after.id));
 });
 
 // Direct sell from coil (reduces coil_stock)
