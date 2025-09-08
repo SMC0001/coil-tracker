@@ -1198,21 +1198,39 @@ app.patch('/api/coils/:id', auth('admin'), (req, res) => {
   }
 
   // ✅ Sync circle_runs (grade, thickness, width)
-  run(`
-    UPDATE circle_runs
-    SET grade=?, thickness=?, width=?
-    WHERE coil_id=?`,
-    [after.grade || null, after.thickness || null, after.width || null, after.id]
-  );
+run(`
+  UPDATE circle_runs
+  SET grade = ?,
+      thickness = ?,
+      width = ?
+  WHERE coil_id = ?
+`, [after.grade, after.thickness, after.width, after.id]);
 
-  // ✅ Sync patta_runs (grade, thickness) if derived from this coil
-  run(`
-    UPDATE patta_runs
-    SET grade=?, thickness=?
-    WHERE source_type='circle'
-      AND patta_source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
-    [after.grade || null, after.thickness || null, after.id]
-  );
+// ✅ Sync patta_runs directly linked to this coil (through circle_runs)
+run(`
+  UPDATE patta_runs
+  SET grade = ?,
+      thickness = ?,
+      width = ?
+  WHERE source_type = 'circle'
+    AND patta_source_id IN (
+      SELECT id FROM circle_runs WHERE coil_id = ?
+    )
+`, [after.grade, after.thickness, after.width, after.id]);
+
+// ✅ Cascade one more level: patta derived from patta
+run(`
+  UPDATE patta_runs
+  SET grade = ?,
+      thickness = ?,
+      width = ?
+  WHERE source_type = 'patta'
+    AND patta_source_id IN (
+      SELECT id FROM patta_runs
+      WHERE source_type = 'circle'
+        AND patta_source_id IN (SELECT id FROM circle_runs WHERE coil_id = ?)
+    )
+`, [after.grade, after.thickness, after.width, after.id]);
 
   // ✅ Sync circle_stock (grade, thickness, width)
   run(`
@@ -1787,33 +1805,54 @@ run(
 
 app.get('/api/patta-runs', auth(), (req, res) => {
   const { from, to, q, operator } = req.query;
-let sql = `
-  SELECT pr.*, 
-         CASE 
-           WHEN pr.source_type = 'circle' THEN c.rn
-           WHEN pr.source_type = 'patta' THEN 'PATTA-' || pr.patta_source_id
-         END as source_ref,
 
-         -- ✅ Add thickness from coil or circle
-         CASE
-           WHEN pr.source_type = 'circle' THEN COALESCE(cr.thickness, c.thickness)
-           WHEN pr.source_type = 'patta'  THEN COALESCE(cr2.thickness, c2.thickness, cr3.thickness, c3.thickness)
-         END AS thickness_mm
+  let sql = `
+    SELECT 
+      pr.id,
+      pr.patta_source_id,
+      pr.source_type,
+      pr.run_date,
+      pr.operator,
+      pr.net_weight_kg,
+      pr.op_size_mm,
+      pr.circle_weight_kg,
+      pr.qty,
+      pr.scrap_weight_kg,
+      pr.patta_size,
 
-  FROM patta_runs pr
-  LEFT JOIN circle_runs cr  ON pr.source_type = 'circle' AND pr.patta_source_id = cr.id
-  LEFT JOIN coils c         ON c.id = cr.coil_id
+      -- ✅ Always expose grade properly
+      COALESCE(
+        pr.grade,
+        CASE
+          WHEN pr.source_type = 'circle' THEN c.grade
+          WHEN pr.source_type = 'patta'  THEN COALESCE(c2.grade, c3.grade)
+        END
+      ) AS grade,
 
-  -- 👇 add multi-hop joins like circle stock did
-  LEFT JOIN circle_runs cr2 ON pr.source_type='patta' AND pr.patta_source_id = cr2.id
-  LEFT JOIN coils c2        ON c2.id = cr2.coil_id
+      CASE 
+        WHEN pr.source_type = 'circle' THEN c.rn
+        WHEN pr.source_type = 'patta'  THEN 'PATTA-' || pr.patta_source_id
+      END AS source_ref,
 
-  LEFT JOIN patta_runs pr2  ON pr.source_type='patta' AND pr.patta_source_id = pr2.id
-  LEFT JOIN circle_runs cr3 ON pr2.source_type='circle' AND pr2.patta_source_id = cr3.id
-  LEFT JOIN coils c3        ON c3.id = cr3.coil_id
+      -- ✅ Thickness resolution
+      CASE
+        WHEN pr.source_type = 'circle' THEN COALESCE(cr.thickness, c.thickness)
+        WHEN pr.source_type = 'patta'  THEN COALESCE(cr2.thickness, c2.thickness, cr3.thickness, c3.thickness)
+      END AS thickness_mm
 
-  WHERE 1=1
-`;
+    FROM patta_runs pr
+    LEFT JOIN circle_runs cr  ON pr.source_type = 'circle' AND pr.patta_source_id = cr.id
+    LEFT JOIN coils c         ON c.id = cr.coil_id
+
+    LEFT JOIN circle_runs cr2 ON pr.source_type='patta' AND pr.patta_source_id = cr2.id
+    LEFT JOIN coils c2        ON c2.id = cr2.coil_id
+
+    LEFT JOIN patta_runs pr2  ON pr.source_type='patta' AND pr.patta_source_id = pr2.id
+    LEFT JOIN circle_runs cr3 ON pr2.source_type='circle' AND pr2.patta_source_id = cr3.id
+    LEFT JOIN coils c3        ON c3.id = cr3.coil_id
+
+    WHERE 1=1
+  `;
 
   const where = [], p = [];
   if (from)     { where.push(`pr.run_date >= ?`); p.push(from); }
@@ -1822,8 +1861,10 @@ let sql = `
   if (q)        { where.push(`(c.rn LIKE ? OR pr.operator LIKE ?)`); p.push(`%${q}%`, `%${q}%`); }
   if (where.length) sql += ` AND ` + where.join(' AND ');
   sql += ` ORDER BY pr.run_date DESC, pr.id DESC`;
+
   res.json(all(sql, p));
 });
+
 
 app.patch('/api/patta-runs/:id', auth(), (req, res) => {
   const allowed = [
