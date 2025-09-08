@@ -114,6 +114,8 @@ function NumCell({ val, on, w }) {
 function OrdersTab() {
   const [orders, setOrders] = useState([]);
   const [view, setView] = useState("open"); // 'open' | 'cancelled'
+  const [cancelRemark, setCancelRemark] = useState("");
+  const [showCancelPrompt, setShowCancelPrompt] = useState(null);
 
   // Only show non-dispatched orders in "open" view
   const openOrders = useMemo(
@@ -266,10 +268,21 @@ function OrdersTab() {
   };
 
   // Cancel/Uncancel
-  const cancelOrder = async (id) => {
-    if (!confirm("Cancel this order?")) return;
+  const cancelOrder = (id) => {
+    setCancelRemark("");
+    setShowCancelPrompt(id); // open popup
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!cancelRemark.trim()) {
+      alert("Please enter a cancellation remark");
+      return;
+    }
     try {
-      await axios.patch(`${API}/orders/${id}/cancel`);
+      await axios.patch(`${API}/orders/${showCancelPrompt}/cancel`, {
+        remarks: cancelRemark,
+      });
+      setShowCancelPrompt(null);
       await load();
     } catch (e) {
       alert(e?.response?.data?.error || "Failed to cancel order");
@@ -285,12 +298,10 @@ function OrdersTab() {
     }
   };
 
-  // 1) Let Head accept extra className
+  // Table Head helper
   const Head = ({ children, right, w, className = "" }) => (
     <th
-      className={`whitespace-nowrap ${
-        right ? "text-right" : "text-left"
-      } ${className}`}
+      className={`whitespace-nowrap ${right ? "text-right" : "text-left"} ${className}`}
       style={{ width: w }}
     >
       {children}
@@ -317,9 +328,7 @@ function OrdersTab() {
       label = "Partially Dispatched";
     }
     return (
-      <span
-        className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}
-      >
+      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
         {label}
       </span>
     );
@@ -328,65 +337,66 @@ function OrdersTab() {
   return (
     <div className="space-y-4">
       <Section
-  title="New Order"
-  right={
-<div className="flex items-center gap-2">
-  {/* View toggle */}
-  <div className="bg-slate-100 rounded-lg p-1 flex">
-    <button
-      type="button"
-      onClick={() => setView("open")}
-      className={`px-3 py-1 rounded ${view === "open" ? "bg-white shadow border" : ""}`}
-    >
-      Open
-    </button>
-    <button
-      type="button"
-      onClick={() => setView("cancelled")}
-      className={`px-3 py-1 rounded ${view === "cancelled" ? "bg-white shadow border" : ""}`}
-    >
-      Cancelled
-    </button>
-  </div>
+        title="New Order"
+        right={
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="bg-slate-100 rounded-lg p-1 flex">
+              <button
+                type="button"
+                onClick={() => setView("open")}
+                className={`px-3 py-1 rounded ${view === "open" ? "bg-white shadow border" : ""}`}
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("cancelled")}
+                className={`px-3 py-1 rounded ${view === "cancelled" ? "bg-white shadow border" : ""}`}
+              >
+                Cancelled
+              </button>
+            </div>
 
-  <input
-    value={q}
-    onChange={(e) => setQ(e.target.value)}
-    placeholder="Search company / grade / order"
-    className="border rounded-lg px-3 py-2 w-64"
-  />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search company / grade / order"
+              className="border rounded-lg px-3 py-2 w-64"
+            />
 
-  <label className="text-sm">
-    <div className="text-slate-600 mb-1">Grade</div>
-    <select
-      value={gradeFilter}
-      onChange={(e) => setGradeFilter(e.target.value)}
-      className="border rounded-lg px-3 py-2"
-    >
-      <option value="">All Grades</option>
-      {GRADES.map((g) => (
-        <option key={g} value={g}>{g}</option>
-      ))}
-    </select>
-  </label>
+            <label className="text-sm">
+              <div className="text-slate-600 mb-1">Grade</div>
+              <select
+                value={gradeFilter}
+                onChange={(e) => setGradeFilter(e.target.value)}
+                className="border rounded-lg px-3 py-2"
+              >
+                <option value="">All Grades</option>
+                {GRADES.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-  <label className="text-sm">
-    <div className="text-slate-600 mb-1">Status</div>
-    <select
-      value={statusFilter}
-      onChange={(e) => setStatusFilter(e.target.value)}
-      className="border rounded-lg px-3 py-2"
-    >
-      <option value="">All</option>
-      <option value="Pending">Pending</option>
-      <option value="Partial">Partial</option>
-      <option value="Fulfilled">Dispatched</option>
-    </select>
-  </label>
+            <label className="text-sm">
+              <div className="text-slate-600 mb-1">Status</div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border rounded-lg px-3 py-2"
+              >
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Partial">Partial</option>
+                <option value="Fulfilled">Dispatched</option>
+              </select>
+            </label>
 
-  {/* Export button (make sure it is self-closing) */}
-  <ExportSheetButton tab="orders" />
-</div>
+            <ExportSheetButton tab="orders" />
+          </div>
         }
       >
         {/* Create form */}
@@ -394,22 +404,13 @@ function OrdersTab() {
           onSubmit={createOrder}
           className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
         >
-          <Input
-            label="Order Date"
-            type="date"
-            value={form.order_date}
-            onChange={(e) =>
-              setForm({ ...form, order_date: e.target.value })
-            }
+          <Input label="Order Date" type="date" value={form.order_date}
+            onChange={(e) => setForm({ ...form, order_date: e.target.value })}
           />
-          <Input
-            label="Order By"
-            value={form.order_by}
+          <Input label="Order By" value={form.order_by}
             onChange={(e) => setForm({ ...form, order_by: e.target.value })}
           />
-          <Input
-            label="Company"
-            value={form.company}
+          <Input label="Company" value={form.company}
             onChange={(e) => setForm({ ...form, company: e.target.value })}
           />
           <label className="text-sm">
@@ -421,39 +422,21 @@ function OrdersTab() {
             >
               <option value="">—</option>
               {GRADES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
+                <option key={g} value={g}>{g}</option>
               ))}
             </select>
           </label>
-          <NumberInput
-            label="Thickness (mm)"
-            value={form.thickness}
-            onChange={(e) =>
-              setForm({ ...form, thickness: e.target.value })
-            }
+          <NumberInput label="Thickness (mm)" value={form.thickness}
+            onChange={(e) => setForm({ ...form, thickness: e.target.value })}
           />
-          <NumberInput
-            label="Op. Size (mm)"
-            value={form.op_size_mm}
-            onChange={(e) =>
-              setForm({ ...form, op_size_mm: e.target.value })
-            }
+          <NumberInput label="Op. Size (mm)" value={form.op_size_mm}
+            onChange={(e) => setForm({ ...form, op_size_mm: e.target.value })}
           />
-          <NumberInput
-            label="Ordered Pcs"
-            value={form.ordered_qty}
-            onChange={(e) =>
-              setForm({ ...form, ordered_qty: e.target.value })
-            }
+          <NumberInput label="Ordered Pcs" value={form.ordered_qty}
+            onChange={(e) => setForm({ ...form, ordered_qty: e.target.value })}
           />
-          <NumberInput
-            label="Ordered Weight (kg)"
-            value={form.ordered_weight_kg}
-            onChange={(e) =>
-              setForm({ ...form, ordered_weight_kg: e.target.value })
-            }
+          <NumberInput label="Ordered Weight (kg)" value={form.ordered_weight_kg}
+            onChange={(e) => setForm({ ...form, ordered_weight_kg: e.target.value })}
           />
           <div>
             <button className="bg-sky-600 text-white rounded-lg px-3 py-2 w-full h-full">
@@ -475,244 +458,78 @@ function OrdersTab() {
                 <Head w={100}>Thickness</Head>
                 <Head w={110}>Op. Size (mm)</Head>
                 <Head right w={110}>Ordered Pcs</Head>
-                <Head right w={140}>
-                  <span className="pr-6 inline-block">Ordered (kg)</span>
-                </Head>
+                <Head right w={140}><span className="pr-6 inline-block">Ordered (kg)</span></Head>
                 <Head right w={140}>Fulfilled (kg)</Head>
-                <Head right w={160} className="pr-4">
-                  Remaining (kg)
-                </Head>
-                <Head w={140} className="pl-3">
-                  Cancelled On
-                </Head>
-                <Head w={140} className="border-l border-slate-200 pl-3">
-                  Status
-                </Head>
-                <Head w={160}>
-                  <span className="pl-4 inline-block">Actions</span>
-                </Head>
+                <Head right w={160} className="pr-4">Remaining (kg)</Head>
+                <Head w={140} className="pl-3">Cancelled On</Head>
+                <Head w={180} className="pl-3">Remarks</Head>
+                <Head w={140} className="border-l border-slate-200 pl-3">Status</Head>
+                <Head w={160}><span className="pl-4 inline-block">Actions</span></Head>
               </tr>
             </thead>
             <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
               {rows.map((o) => {
-                const isEdit =
-                  editingId === o.order_no && view !== "cancelled"; // disable edit in cancelled
+                const isEdit = editingId === o.order_no && view !== "cancelled";
                 return (
                   <tr key={o.order_no} className="border-t">
                     <td>{o.order_no}</td>
-
-                    {/* Order Date */}
-                    <td>
-                      {isEdit ? (
-                        <input
-                          type="date"
-                          className="border rounded px-2 py-1"
-                          value={draft.order_date}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              order_date: e.target.value,
-                            })
-                          }
-                        />
-                      ) : (
-                        o.order_date || "—"
-                      )}
-                    </td>
-
-                    {/* Order By */}
-                    <td className="w-[160px]">
-                      {isEdit ? (
-                        <input
-                          value={draft.order_by}
-                          onChange={(e) =>
-                            setDraft({ ...draft, order_by: e.target.value })
-                          }
-                          className="border rounded px-2 py-1 w-full"
-                        />
-                      ) : (
-                        o.order_by || "—"
-                      )}
-                    </td>
-
-                    {/* Company */}
-                    <td className="w-[180px]">
-                      {isEdit ? (
-                        <input
-                          value={draft.company}
-                          onChange={(e) =>
-                            setDraft({ ...draft, company: e.target.value })
-                          }
-                          className="border rounded px-2 py-1 w-full"
-                        />
-                      ) : (
-                        o.company || "—"
-                      )}
-                    </td>
-
-                    {/* Grade */}
-                    <td>
-                      {isEdit ? (
-                        <input
-                          value={draft.grade}
-                          onChange={(e) =>
-                            setDraft({ ...draft, grade: e.target.value })
-                          }
-                          className="border rounded px-2 py-1"
-                        />
-                      ) : (
-                        o.grade || "—"
-                      )}
-                    </td>
-
-                    {/* Thickness */}
-                    <td>
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.thickness}
-                          on={(v) =>
-                            setDraft({ ...draft, thickness: v })
-                          }
-                          w={80}
-                        />
-                      ) : (
-                        o.thickness_mm ?? "—"
-                      )}
-                    </td>
-
-                    {/* Op. Size */}
-                    <td>
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.op_size_mm}
-                          on={(v) =>
-                            setDraft({ ...draft, op_size_mm: v })
-                          }
-                          w={90}
-                        />
-                      ) : (
-                        o.op_size_mm ?? "—"
-                      )}
-                    </td>
-
-                    {/* Ordered Pcs */}
-                    <td className="text-right">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.ordered_qty}
-                          on={(v) =>
-                            setDraft({ ...draft, ordered_qty: v })
-                          }
-                          w={90}
-                        />
-                      ) : (
-                        fmt(o.ordered_qty_pcs)
-                      )}
-                    </td>
-
-                    {/* Ordered kg */}
-                    <td className="text-right pr-6">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.ordered_weight_kg}
-                          on={(v) =>
-                            setDraft({
-                              ...draft,
-                              ordered_weight_kg: v,
-                            })
-                          }
-                          w={120}
-                        />
-                      ) : (
-                        fmt(o.ordered_weight_kg)
-                      )}
-                    </td>
-
-                    {/* Fulfilled kg */}
-                    <td className="text-right">
-                      {fmt(o.fulfilled_weight_kg)}
-                    </td>
-
-                    {/* Remaining kg */}
-                    <td className="text-right pr-6">
-                      {fmt(o.remaining_weight_kg)}
-                    </td>
-
-                    {/* Cancelled On */}
-                    <td className="pl-3">
-                      {view === "cancelled"
-                        ? o.cancelled_at || "—"
-                        : "—"}
-                    </td>
-
-                    {/* Status */}
+                    <td>{o.order_date || "—"}</td>
+                    <td>{o.order_by || "—"}</td>
+                    <td>{o.company || "—"}</td>
+                    <td>{o.grade || "—"}</td>
+                    <td>{o.thickness_mm ?? "—"}</td>
+                    <td>{o.op_size_mm ?? "—"}</td>
+                    <td className="text-right">{fmt(o.ordered_qty_pcs)}</td>
+                    <td className="text-right pr-6">{fmt(o.ordered_weight_kg)}</td>
+                    <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
+                    <td className="text-right pr-6">{fmt(o.remaining_weight_kg)}</td>
+                    <td className="pl-3">{o.cancelled_at || "—"}</td>
+                    <td className="pl-3">{o.cancel_remarks || "—"}</td>
                     <td className="border-l border-slate-200 pl-3">
                       {renderStatus(o.status, o.cancelled_at)}
                     </td>
-
-                    {/* Actions */}
                     <td className="whitespace-nowrap pl-4">
-                      {isEdit ? (
-                        <div className="flex gap-1">
-                          <button
-                            className="px-2 py-1 rounded bg-emerald-600 text-white"
-                            onClick={() => saveEdit(o.order_no)}
-                          >
-                            Save
-                          </button>
+                      {view === "cancelled" ? (
+                        <>
                           <button
                             className="px-2 py-1 rounded border"
-                            onClick={cancelEdit}
+                            onClick={() => uncancelOrder(o.order_no)}
+                            type="button"
+                          >
+                            Uncancel
+                          </button>
+                          <button
+                            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                            onClick={() => deleteOrder(o.order_no)}
+                            type="button"
+                          >
+                            Del
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="px-2 py-1 rounded border"
+                            onClick={() => startEdit(o)}
+                            type="button"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="px-2 py-1 rounded border border-rose-300 text-rose-600"
+                            onClick={() => cancelOrder(o.order_no)}
                             type="button"
                           >
                             Cancel
                           </button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-1">
-                          {view === "cancelled" ? (
-                            <>
-                              <button
-                                className="px-2 py-1 rounded border"
-                                onClick={() => uncancelOrder(o.order_no)}
-                                type="button"
-                              >
-                                Uncancel
-                              </button>
-                              <button
-                                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                                onClick={() => deleteOrder(o.order_no)}
-                                type="button"
-                              >
-                                Del
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                className="px-2 py-1 rounded border"
-                                onClick={() => startEdit(o)}
-                                type="button"
-                              >
-                                Edit
-                              </button>
-                                                            <button
-                                className="px-2 py-1 rounded border border-rose-300 text-rose-600"
-                                onClick={() => cancelOrder(o.order_no)}
-                                type="button"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                                onClick={() => deleteOrder(o.order_no)}
-                                type="button"
-                              >
-                                Del
-                              </button>
-                            </>
-                          )}
-                        </div>
+                          <button
+                            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                            onClick={() => deleteOrder(o.order_no)}
+                            type="button"
+                          >
+                            Del
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -729,6 +546,36 @@ function OrdersTab() {
           </table>
         </div>
       </Section>
+
+      {/* Cancel popup */}
+      {showCancelPrompt && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-lg font-semibold mb-4">Cancel Order</h2>
+            <textarea
+              value={cancelRemark}
+              onChange={(e) => setCancelRemark(e.target.value)}
+              placeholder="Enter cancellation remarks"
+              className="w-full border rounded-lg p-2 mb-4"
+              rows={3}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 rounded border"
+                onClick={() => setShowCancelPrompt(null)}
+              >
+                Close
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-rose-600 text-white"
+                onClick={confirmCancelOrder}
+              >
+                Confirm Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

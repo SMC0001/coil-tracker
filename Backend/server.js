@@ -71,6 +71,8 @@ try { db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coils_rn ON coils(rn)`).
 // ✅ cancellations (idempotent, no reason)
 try { db.prepare(`ALTER TABLE orders ADD COLUMN cancelled_at TEXT`).run(); } catch {}
 
+try { db.prepare(`ALTER TABLE orders ADD COLUMN cancel_remarks TEXT`).run(); } catch {}
+
 // Scrap sales: add rn + source_type if missing
 try { db.prepare(`ALTER TABLE scrap_sales ADD COLUMN rn TEXT`).run(); } catch {}
 try { db.prepare(`ALTER TABLE scrap_sales ADD COLUMN source_type TEXT`).run(); } catch {}
@@ -658,6 +660,7 @@ app.get('/api/orders', auth(), (req, res) => {
       MAX(0, IFNULL(ordered_weight_kg,0) - IFNULL(fulfilled_weight_kg,0)) AS remaining_weight_kg,
       status,
       cancelled_at,
+      cancel_remarks,
       created_at,
       updated_at
     FROM orders
@@ -833,26 +836,33 @@ app.delete('/api/orders/:order_no', auth("admin"), (req, res) => {
 // ------------------------- Cancel / Un-cancel an order -------------------------
 app.patch('/api/orders/:id/cancel', auth('admin'), (req, res) => {
   const { id } = req.params;
+  const { remarks } = req.body;
+
+  // remarks are required
+  if (!remarks || !remarks.trim()) {
+    return res.status(400).json({ error: "Cancellation remarks are required" });
+  }
 
   const order = get(`SELECT * FROM orders WHERE id = ?`, [id]);
   if (!order) return res.status(404).json({ error: 'Order not found' });
   if (order.cancelled_at) return res.status(409).json({ error: 'Already cancelled' });
 
-  const when = new Date().toISOString().slice(0,10);
+  const when = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   run(
     `UPDATE orders
-       SET cancelled_at = ?,
-           status = 'Cancelled',
-           updated_at = datetime('now')
+       SET cancelled_at   = ?,
+           cancel_remarks = ?,
+           status         = 'Cancelled',
+           updated_at     = datetime('now')
      WHERE id = ?`,
-    [when, id]
+    [when, remarks.trim(), id]
   );
 
   res.json(get(`SELECT * FROM orders WHERE id = ?`, [id]));
 });
 
-app.patch('/api/orders/:id/uncancel', (req, res) => {
+app.patch('/api/orders/:id/uncancel', auth('admin'), (req, res) => {
   const { id } = req.params;
 
   const order = get(`SELECT * FROM orders WHERE id = ?`, [id]);
@@ -861,9 +871,10 @@ app.patch('/api/orders/:id/uncancel', (req, res) => {
 
   run(
     `UPDATE orders
-       SET cancelled_at = NULL,
-           status = 'Pending',
-           updated_at = datetime('now')
+       SET cancelled_at   = NULL,
+           cancel_remarks = NULL,
+           status         = 'Pending',
+           updated_at     = datetime('now')
      WHERE id = ?`,
     [id]
   );
@@ -873,7 +884,6 @@ app.patch('/api/orders/:id/uncancel', (req, res) => {
 
   res.json(get(`SELECT * FROM orders WHERE id = ?`, [id]));
 });
-
 
 // ================= ORDERS: Auto update status =================
 app.post("/api/orders/:id/update-status", auth(), (req, res) => {
