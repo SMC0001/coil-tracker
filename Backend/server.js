@@ -1820,21 +1820,19 @@ app.get('/api/patta-runs', auth(), (req, res) => {
       pr.scrap_weight_kg,
       pr.patta_size,
 
-      -- ✅ Always expose grade properly
-      COALESCE(
-        pr.grade,
-        CASE
-          WHEN pr.source_type = 'circle' THEN c.grade
-          WHEN pr.source_type = 'patta'  THEN COALESCE(c2.grade, c3.grade)
-        END
-      ) AS grade,
+      -- ✅ Corrected grade resolution (source takes priority, fallback to pr.grade)
+      CASE
+        WHEN pr.source_type = 'circle' THEN COALESCE(cr.grade, c.grade, pr.grade)
+        WHEN pr.source_type = 'patta'  THEN COALESCE(cr2.grade, c2.grade, cr3.grade, c3.grade, pr.grade)
+        ELSE pr.grade
+      END AS grade,
 
       CASE 
         WHEN pr.source_type = 'circle' THEN c.rn
         WHEN pr.source_type = 'patta'  THEN 'PATTA-' || pr.patta_source_id
       END AS source_ref,
 
-      -- ✅ Thickness resolution
+      -- ✅ Thickness resolution (unchanged)
       CASE
         WHEN pr.source_type = 'circle' THEN COALESCE(cr.thickness, c.thickness)
         WHEN pr.source_type = 'patta'  THEN COALESCE(cr2.thickness, c2.thickness, cr3.thickness, c3.thickness)
@@ -1858,7 +1856,7 @@ app.get('/api/patta-runs', auth(), (req, res) => {
   if (from)     { where.push(`pr.run_date >= ?`); p.push(from); }
   if (to)       { where.push(`pr.run_date <= ?`); p.push(to); }
   if (operator) { where.push(`pr.operator = ?`);  p.push(operator); }
-  if (q)        { where.push(`(c.rn LIKE ? OR pr.operator LIKE ?)`); p.push(`%${q}%`, `%${q}%`); }
+  if (q)        { where.push(`(c.rn LIKE ? OR pr.operator LIKE ?)`); p.push(\`%${q}%\`, \`%${q}%\`); }
   if (where.length) sql += ` AND ` + where.join(' AND ');
   sql += ` ORDER BY pr.run_date DESC, pr.id DESC`;
 
