@@ -71,6 +71,9 @@ try { db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coils_rn ON coils(rn)`).
 // ✅ cancellations (idempotent, no reason)
 try { db.prepare(`ALTER TABLE orders ADD COLUMN cancelled_at TEXT`).run(); } catch {}
 
+// ✅ cancellation remarks (idempotent)
+try { db.prepare(`ALTER TABLE orders ADD COLUMN cancel_remarks TEXT`).run(); } catch {}
+
 // Scrap sales: add rn + source_type if missing
 try { db.prepare(`ALTER TABLE scrap_sales ADD COLUMN rn TEXT`).run(); } catch {}
 try { db.prepare(`ALTER TABLE scrap_sales ADD COLUMN source_type TEXT`).run(); } catch {}
@@ -749,15 +752,14 @@ const ins = run(`
   status ?? 'Pending'
 ]);
 
-  res.json(get(`
-    SELECT id AS order_no, order_date, order_by, company, grade,
-           thickness_mm, op_size_mm,
-           ordered_qty_pcs, ordered_weight_kg,
-           fulfilled_qty_pcs, fulfilled_weight_kg,
-           status, created_at, updated_at
-    FROM orders WHERE id = ?
-  `, [ins.lastInsertRowid]));
-});
+res.json(get(`
+  SELECT id AS order_no, order_date, order_by, company, grade,
+         thickness_mm, op_size_mm,
+         ordered_qty_pcs, ordered_weight_kg,
+         fulfilled_qty_pcs, fulfilled_weight_kg,
+         status, cancelled_at, cancel_remarks, created_at, updated_at
+  FROM orders WHERE id = ?
+`, [ins.lastInsertRowid]));
 
 
 // Edit order inline (allow only Orders tab fields)
@@ -833,6 +835,11 @@ app.delete('/api/orders/:order_no', auth("admin"), (req, res) => {
 // ------------------------- Cancel / Un-cancel an order -------------------------
 app.patch('/api/orders/:id/cancel', auth('admin'), (req, res) => {
   const { id } = req.params;
+  const { remarks } = req.body;
+
+  if (!remarks || !remarks.trim()) {
+    return res.status(400).json({ error: "Cancellation remarks are required" });
+  }
 
   const order = get(`SELECT * FROM orders WHERE id = ?`, [id]);
   if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -843,10 +850,11 @@ app.patch('/api/orders/:id/cancel', auth('admin'), (req, res) => {
   run(
     `UPDATE orders
        SET cancelled_at = ?,
+           cancel_remarks = ?,
            status = 'Cancelled',
            updated_at = datetime('now')
      WHERE id = ?`,
-    [when, id]
+    [when, remarks.trim(), id]
   );
 
   res.json(get(`SELECT * FROM orders WHERE id = ?`, [id]));

@@ -267,14 +267,19 @@ function OrdersTab() {
 
   // Cancel/Uncancel
   const cancelOrder = async (id) => {
-    if (!confirm("Cancel this order?")) return;
-    try {
-      await axios.patch(`${API}/orders/${id}/cancel`);
-      await load();
-    } catch (e) {
-      alert(e?.response?.data?.error || "Failed to cancel order");
-    }
-  };
+  const remarks = prompt("Please enter cancellation remarks:");
+  if (!remarks || !remarks.trim()) {
+    alert("Remarks are required to cancel an order.");
+    return;
+  }
+
+  try {
+    await axios.patch(`${API}/orders/${id}/cancel`, { remarks });
+    await load();
+  } catch (e) {
+    alert(e?.response?.data?.error || "Failed to cancel order");
+  }
+};
 
   const uncancelOrder = async (id) => {
     try {
@@ -485,6 +490,7 @@ function OrdersTab() {
                 <Head w={140} className="pl-3">
                   Cancelled On
                 </Head>
+                <Head w={200} className="pl-3">Remarks</Head>
                 <Head w={140} className="border-l border-slate-200 pl-3">
                   Status
                 </Head>
@@ -643,6 +649,11 @@ function OrdersTab() {
                       {view === "cancelled"
                         ? o.cancelled_at || "—"
                         : "—"}
+                    </td>
+                    
+                    {/* Remarks */}
+                    <td className="pl-3">
+                      {view === "cancelled" ? (o.cancel_remarks || "—") : "—"}
                     </td>
 
                     {/* Status */}
