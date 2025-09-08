@@ -4710,9 +4710,12 @@ function PlanningTab() {
 
       // --- Aggregate order data ---
       for (const o of orders) {
-        const thicknessVal = o.thickness ?? o.thickness_mm ?? null;
-        const sizeVal = o.size ?? o.circle_size ?? null; // include circle size
-        const key = `${o.grade}-${thicknessVal}-${sizeVal}`;
+  // ✅ skip cancelled orders
+  if (o.status && o.status.toLowerCase() === "cancelled") continue;
+
+  const thicknessVal = o.thickness ?? o.thickness_mm ?? null;
+  const sizeVal = o.op_size ?? o.size ?? o.circle_size ?? null;
+  const key = `${o.grade}-${thicknessVal}-${sizeVal}`;
 
         if (!summary[key]) {
           summary[key] = {
