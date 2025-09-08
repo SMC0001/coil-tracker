@@ -3277,8 +3277,7 @@ app.post('/api/coil-stock/recalc', auth('admin'), (_req, res) => {
 });
 
 // ------------------------------ Excel Exports ------------------------------
-import pkg from 'exceljs';
-const ExcelJS = pkg;
+import ExcelJS from 'exceljs';
 import { Readable } from 'stream';
 
 // helper: write rows with ordered headers
