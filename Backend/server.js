@@ -1856,7 +1856,10 @@ app.get('/api/patta-runs', auth(), (req, res) => {
   if (from)     { where.push(`pr.run_date >= ?`); p.push(from); }
   if (to)       { where.push(`pr.run_date <= ?`); p.push(to); }
   if (operator) { where.push(`pr.operator = ?`);  p.push(operator); }
-  if (q)        { where.push(`(c.rn LIKE ? OR pr.operator LIKE ?)`); p.push(\`%${q}%\`, \`%${q}%\`); }
+  if (q) {
+  where.push(`(c.rn LIKE ? OR pr.operator LIKE ?)`);
+  p.push(`%${q}%`, `%${q}%`);}
+
   if (where.length) sql += ` AND ` + where.join(' AND ');
   sql += ` ORDER BY pr.run_date DESC, pr.id DESC`;
 
