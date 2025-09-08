@@ -1183,6 +1183,34 @@ app.patch('/api/coils/:id', auth('admin'), (req, res) => {
     );
   }
 
+  // ✅ Cascade updates into dependent runs and stocks
+  if ('grade' in req.body || 'thickness' in req.body || 'width' in req.body) {
+    run(`
+      UPDATE circle_runs
+      SET grade = COALESCE(?, grade),
+          thickness = COALESCE(?, thickness)
+      WHERE coil_id = ?`,
+      [after.grade, after.thickness, after.id]
+    );
+
+    run(`
+      UPDATE patta_runs
+      SET grade = COALESCE(?, grade),
+          thickness = COALESCE(?, thickness)
+      WHERE source_type='circle'
+        AND patta_source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
+      [after.grade, after.thickness, after.id]
+    );
+
+    run(`
+      UPDATE circle_stock
+      SET grade = ?
+      WHERE source_type='circle'
+        AND source_id IN (SELECT id FROM circle_runs WHERE coil_id=?)`,
+      [after.grade, after.id]
+    );
+  }
+
   res.json(after);
 });
 
