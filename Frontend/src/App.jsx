@@ -923,7 +923,7 @@ function Coils({ onStartedCircle }) {
               className="border rounded-lg px-3 py-2"
             >
               {GRADES.map((g) => (
-                <option key={g}>{g}</option>
+                <option key={g} value={g}>{g}</option>
               ))}
             </select>
           </label>
@@ -1107,13 +1107,22 @@ function Coils({ onStartedCircle }) {
                       setEditDraft({ ...editDraft, rn: e.target.value })
                     }
                   />
-                  <Input
-                    label="Grade"
-                    value={editDraft.grade}
-                    onChange={(e) =>
-                      setEditDraft({ ...editDraft, grade: e.target.value })
-                    }
-                  />
+                  <label className="text-sm">
+                    <div className="text-slate-600 mb-1">Grade</div>
+                    <select
+                      value={editDraft.grade}
+                      onChange={(e) =>
+                        setEditDraft({ ...editDraft, grade: e.target.value })
+                      }
+                      className="border rounded-lg px-3 py-2 w-full"
+                    >
+                      {GRADES.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <NumberInput
                     label="Thickness (mm)"
                     value={editDraft.thickness}
