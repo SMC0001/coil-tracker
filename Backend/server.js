@@ -1244,7 +1244,7 @@ insertStock.run(
   }
 });
 
-// Bulk Import Orders from Excel
+// Bulk Import Orders from Excel (no remarks column)
 app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -1254,15 +1254,13 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
     const rows = xlsx.utils.sheet_to_json(sheet);
     if (!rows.length) return res.status(400).json({ error: "No rows found in worksheet" });
 
+    // NOTE: no remarks here
     const insert = db.prepare(`
       INSERT INTO orders (
         order_date, order_by, company, grade, thickness_mm, op_size_mm,
-        ordered_qty_pcs, ordered_weight_kg, remarks, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')
+        ordered_qty_pcs, ordered_weight_kg, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open')
     `);
-
-    const isBlank = (v) =>
-      v === undefined || v === null || (typeof v === "string" && v.trim() === "");
 
     const dashToNull = (v) => {
       if (v === undefined || v === null) return null;
@@ -1285,15 +1283,14 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
 
-        const orderDate = parseDate(r["Order Date"]); // supports 8/30/2025 etc.
+        const orderDate = parseDate(r["Order Date"]); // 8/30/2025, 09-01-2025, excel serial ok
         const orderBy   = dashToNull(r["Order By"]);
         const company   = dashToNull(r["Company"]);
         const grade     = dashToNull(r["Grade"]);
         const thickness = numOrNull(r["Thickness (mm)"]);
         const opSize    = numOrNull(r["Op. Size (mm)"]);
-        const orderedPcs= numOrNull(r["Ordered Pcs"]);          // "—" or "-" -> null
-        const orderedWt = numOrNull(r["Ordered Weight (kg)"]);  // "—" or "-" -> null
-        const remarks   = dashToNull(r["Remarks"]);
+        const orderedPcs= numOrNull(r["Ordered Pcs"]);          // "-" -> null
+        const orderedWt = numOrNull(r["Ordered Weight (kg)"]);  // "-" -> null
 
         const rowErrors = [];
         if (!orderDate) rowErrors.push("Invalid/blank Order Date");
@@ -1319,8 +1316,7 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
           thickness,
           opSize,
           orderedPcs,
-          orderedWt,
-          remarks
+          orderedWt
         );
         inserted++;
       }
@@ -1343,6 +1339,7 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
     return res.status(500).json({ error: err.message || "Failed to import orders" });
   }
 });
+
 
 // List coils
 app.get('/api/coils', auth(), (req, res) => {
