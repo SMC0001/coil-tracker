@@ -2786,7 +2786,7 @@ async function submitGlobalScrapSale(e) {
     </td>
   </tr>
 </StickyTable>
-      </div>
+      </Section>
 
       {/* Scrap Sales History */}
 <div className="mt-6">
