@@ -2308,256 +2308,244 @@ const Head = ({ children, w, right, className = "" }) => (
         )}
 
         {/* Patta Runs Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-slate-600 sticky top-0 bg-white">
-              <tr>
-                <Head w={140}>Date</Head>
-                <Head w={150}>Source Ref</Head>
-                <Head w={140}>Operator</Head>
-                <Head w={90}>Grade</Head>
-                <Head w={100} right>Thickness (mm)</Head>
-                <Head w={110} right>Patta size</Head>
-                <Head w={130} right className="pr-6">Net weight</Head>
-                <Head w={120} className="border-l border-slate-200 pl-4">Circle size</Head>
-                <Head w={130} right>
-                  Circle weight
-                </Head>
-                <Head w={90} right>
-                  Pcs
-                </Head>
-                <Head w={130} right>
-                  Scrap
-                </Head>
-                <Head w={130} right>
-                  Balance
-                </Head>
-                <Head w={90} right>
-                  Yield %
-                </Head>
-                <Head w={140}></Head>
-              </tr>
-            </thead>
+<StickyTable
+  headers={[
+    { label: "Date", className: "w-36" },
+    { label: "Source Ref", className: "w-44" },
+    { label: "Operator", className: "w-40" },
+    { label: "Grade", className: "w-28" },
+    { label: "Thickness (mm)", className: "text-right w-32" },
+    { label: "Patta size", className: "text-right w-32" },
+    { label: "Net weight", className: "text-right w-36" },
+    { label: "Circle size", className: "text-right w-36 border-l border-slate-200" },
+    { label: "Circle weight", className: "text-right w-40" },
+    { label: "Pcs", className: "text-right w-28" },
+    { label: "Scrap", className: "text-right w-36" },
+    { label: "Balance", className: "text-right w-36" },
+    { label: "Yield %", className: "text-right w-28" },
+    { label: "", className: "w-36" },
+  ]}
+>
+  {rows.map((r) => {
+    const isEdit = editingId === r.id;
+    const y = isEdit
+      ? (() => {
+          const net = Number(draft.net_weight_kg || 0);
+          const circ = Number(draft.circle_weight_kg || 0);
+          return net > 0 ? (100 * circ) / net : 0;
+        })()
+      : yieldPct(r);
+    const b = isEdit
+      ? (() => {
+          const net = Number(draft.net_weight_kg || 0);
+          const circ = Number(draft.circle_weight_kg || 0);
+          const scrap = Number(draft.scrap_weight_kg || 0);
+          return net - circ - scrap;
+        })()
+      : balance(r);
 
-            <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-              {rows.map((r) => {
-                const isEdit = editingId === r.id;
-                const y = isEdit
-                  ? (() => {
-                      const net = Number(draft.net_weight_kg || 0);
-                      const circ = Number(draft.circle_weight_kg || 0);
-                      return net > 0 ? (100 * circ) / net : 0;
-                    })()
-                  : yieldPct(r);
-                const b = isEdit
-                  ? (() => {
-                      const net = Number(draft.net_weight_kg || 0);
-                      const circ = Number(draft.circle_weight_kg || 0);
-                      const scrap = Number(draft.scrap_weight_kg || 0);
-                      return net - circ - scrap;
-                    })()
-                  : balance(r);
+    return (
+      <tr key={r.id} className="border-t">
+        {/* Date */}
+        <td>
+          {isEdit ? (
+            <input
+              type="date"
+              value={draft.run_date}
+              onChange={(e) =>
+                setDraft({ ...draft, run_date: e.target.value })
+              }
+              className="border rounded px-2 py-1 w-[130px]"
+            />
+          ) : (
+            r.run_date || "—"
+          )}
+        </td>
 
-                return (
-                  <tr key={r.id} className="border-t">
-                    {/* Date */}
-                    <td className="whitespace-nowrap">
-                      {isEdit ? (
-                        <input
-                          type="date"
-                          value={draft.run_date}
-                          onChange={(e) =>
-                            setDraft({ ...draft, run_date: e.target.value })
-                          }
-                          className="border rounded px-2 py-1 w-[130px]"
-                        />
-                      ) : (
-                        r.run_date || "—"
-                      )}
-                    </td>
+        {/* Source Reference */}
+        <td>{r.source_ref}</td>
 
-                    {/* Source Reference */}
-                    <td className="whitespace-nowrap">{r.source_ref}</td>
+        {/* Operator */}
+        <td>
+          {isEdit ? (
+            <select
+              value={draft.operator}
+              onChange={(e) =>
+                setDraft({ ...draft, operator: e.target.value })
+              }
+              className="border rounded px-2 py-1 w-[130px]"
+            >
+              <option value="">—</option>
+              {OPERATORS.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
+            </select>
+          ) : (
+            r.operator || "—"
+          )}
+        </td>
 
-                    {/* Operator */}
-                    <td>
-                      {isEdit ? (
-                        <select
-                          value={draft.operator}
-                          onChange={(e) =>
-                            setDraft({ ...draft, operator: e.target.value })
-                          }
-                          className="border rounded px-2 py-1 w-[130px]"
-                        >
-                          <option value="">—</option>
-                          {OPERATORS.map((o) => (
-                            <option key={o}>{o}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        r.operator || "—"
-                      )}
-                    </td>
+        {/* Grade */}
+        <td>
+          {isEdit ? (
+            <select
+              value={draft.grade}
+              onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
+              className="border rounded px-2 py-1 w-[90px]"
+            >
+              <option value="">—</option>
+              {GRADES.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          ) : (
+            r.grade || "—"
+          )}
+        </td>
 
+        {/* Thickness (mm) */}
+        <td className="text-right">
+          {isEdit ? (
+            <input
+              value={draft.thickness_mm ?? ""}
+              readOnly
+              className="border rounded px-2 py-1 w-[90px] text-right bg-slate-100"
+            />
+          ) : (
+            r.thickness_mm ?? "—"
+          )}
+        </td>
 
-                    {/* Grade */}
-                    <td>
-                      {isEdit ? (
-                        <select
-                          value={draft.grade}
-                          onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
-                          className="border rounded px-2 py-1 w-[90px]"
-                        >
-                          <option value="">—</option>
-                          {GRADES.map((g) => (
-                            <option key={g} value={g}>{g}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        r.grade || "—"
-                      )}
-                    </td>
+        {/* Patta size */}
+        <td className="text-right">
+          {isEdit ? (
+            <input
+              value={draft.patta_size ?? ""}
+              readOnly
+              className="border rounded px-2 py-1 w-[90px] text-right bg-slate-100"
+            />
+          ) : (
+            r.patta_size ?? "—"
+          )}
+        </td>
 
-{/* Thickness (mm) */}
-<td className="text-right">
-  {isEdit ? (
-    <input
-      value={draft.thickness_mm ?? ""}
-      readOnly
-      className="border rounded px-2 py-1 w-[90px] text-right bg-slate-100"
-    />
-  ) : (
-    (r.thickness_mm ?? "—")
+        {/* Net weight */}
+        <td className="text-right">
+          {isEdit ? (
+            <NumCell
+              val={draft.net_weight_kg}
+              on={(v) => setDraft({ ...draft, net_weight_kg: v })}
+              w={110}
+            />
+          ) : (
+            fmt(r.net_weight_kg)
+          )}
+        </td>
+
+        {/* Circle size */}
+        <td>
+          {isEdit ? (
+            <NumCell
+              val={draft.op_size_mm}
+              on={(v) => setDraft({ ...draft, op_size_mm: v })}
+              w={80}
+            />
+          ) : (
+            r.op_size_mm ?? "—"
+          )}
+        </td>
+
+        {/* Circle weight */}
+        <td className="text-right">
+          {isEdit ? (
+            <NumCell
+              val={draft.circle_weight_kg}
+              on={(v) => setDraft({ ...draft, circle_weight_kg: v })}
+              w={110}
+            />
+          ) : (
+            fmt(r.circle_weight_kg)
+          )}
+        </td>
+
+        {/* Qty */}
+        <td className="text-right">
+          {isEdit ? (
+            <NumCell
+              val={draft.qty}
+              on={(v) => setDraft({ ...draft, qty: v })}
+              w={80}
+            />
+          ) : (
+            fmt(r.qty)
+          )}
+        </td>
+
+        {/* Scrap */}
+        <td className="text-right">
+          {isEdit ? (
+            <NumCell
+              val={draft.scrap_weight_kg}
+              on={(v) => setDraft({ ...draft, scrap_weight_kg: v })}
+              w={95}
+            />
+          ) : (
+            fmt(r.scrap_weight_kg)
+          )}
+        </td>
+
+        {/* Derived */}
+        <td className="text-right font-medium">{fmt(b)}</td>
+        <td className="text-right">{y.toFixed(2)}</td>
+
+        {/* Actions */}
+        <td>
+          {isEdit ? (
+            <div className="flex gap-1">
+              <button
+                className="px-2 py-1 rounded bg-emerald-600 text-white"
+                onClick={() => saveEdit(r.id)}
+              >
+                Save
+              </button>
+              <button
+                className="px-2 py-1 rounded border"
+                onClick={cancelEdit}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-1">
+              <button
+                className="px-2 py-1 rounded border"
+                onClick={() => startEdit(r)}
+              >
+                Edit
+              </button>
+              <button
+                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                onClick={() => deleteRun(r.id)}
+              >
+                Del
+              </button>
+            </div>
+          )}
+        </td>
+      </tr>
+    );
+  })}
+  {!rows.length && (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={14}>
+        No patta runs found.
+      </td>
+    </tr>
   )}
-</td>
-
-                    {/* Patta size (read-only) */}
-                    <td className="text-right">
-                      {isEdit ? (
-                        <input
-                          value={draft.patta_size ?? ""}
-                          readOnly
-                          className="border rounded px-2 py-1 w-[90px] text-right bg-slate-100"
-                        />
-                      ) : (
-                        r.patta_size ?? "—"
-                      )}
-                   </td>
-
-                    {/* Numbers */}
-                    <td className="text-right pr-6">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.net_weight_kg}
-                          on={(v) => setDraft({ ...draft, net_weight_kg: v })}
-                          w={110}
-                        />
-                      ) : (
-                        fmt(r.net_weight_kg)
-                      )}
-                    </td>
-
-                    <td className="border-l border-slate-200 pl-4">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.op_size_mm}
-                          on={(v) => setDraft({ ...draft, op_size_mm: v })}
-                          w={80}
-                        />
-                      ) : (
-                        r.op_size_mm ?? "—"
-                      )}
-                    </td>
-                    <td className="text-right">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.circle_weight_kg}
-                          on={(v) =>
-                            setDraft({ ...draft, circle_weight_kg: v })
-                          }
-                          w={110}
-                        />
-                      ) : (
-                        fmt(r.circle_weight_kg)
-                      )}
-                    </td>
-                    <td className="text-right">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.qty}
-                          on={(v) => setDraft({ ...draft, qty: v })}
-                          w={80}
-                        />
-                      ) : (
-                        fmt(r.qty)
-                      )}
-                    </td>
-                    <td className="text-right">
-                      {isEdit ? (
-                        <NumCell
-                          val={draft.scrap_weight_kg}
-                          on={(v) =>
-                            setDraft({ ...draft, scrap_weight_kg: v })
-                          }
-                          w={95}
-                        />
-                      ) : (
-                        fmt(r.scrap_weight_kg)
-                      )}
-                    </td>
-
-                    {/* Derived */}
-                    <td className="text-right font-medium">{fmt(b)}</td>
-                    <td className="text-right">{y.toFixed(2)}</td>
-
-                    {/* Actions */}
-                    <td className="whitespace-nowrap">
-                      {isEdit ? (
-                        <div className="flex gap-1">
-                          <button
-                            className="px-2 py-1 rounded bg-emerald-600 text-white"
-                            onClick={() => saveEdit(r.id)}
-                          >
-                            Save
-                          </button>
-                          <button
-                            className="px-2 py-1 rounded border"
-                            onClick={cancelEdit}
-                            type="button"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex gap-1">
-                          <button
-                            className="px-2 py-1 rounded border"
-                            onClick={() => startEdit(r)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                            onClick={() => deleteRun(r.id)}
-                          >
-                            Del
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {!rows.length && (
-                <tr>
-                  <td className="py-4 text-slate-500" colSpan={12}>
-                    No patta runs found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+</StickyTable>
       </Section>
     </div>
   );
