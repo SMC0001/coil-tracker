@@ -118,6 +118,12 @@ function OrdersTab() {
   const [cancelRemark, setCancelRemark] = useState("");
   const [showCancelPrompt, setShowCancelPrompt] = useState(null);
 
+  // ---- Import Excel (Orders) ----
+  const [showImport, setShowImport] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+
   // Only show non-dispatched orders in "open" view
   const openOrders = useMemo(
     () =>
@@ -299,6 +305,25 @@ function OrdersTab() {
     }
   };
 
+  // ---- Import handler ----
+  const handleImport = async () => {
+    if (!importFile) return alert("Choose an Excel file (.xlsx)");
+    const fd = new FormData();
+    fd.append("file", importFile);
+    setImportBusy(true);
+    try {
+      const res = await axios.post(`${API}/orders/import`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportResult(res.data);
+      await load();
+    } catch (e) {
+      setImportResult(e?.response?.data || { ok: false, error: e.message });
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
   // Table Head helper
   const Head = ({ children, right, w, className = "" }) => (
     <th
@@ -322,10 +347,10 @@ function OrdersTab() {
     let color = "bg-slate-200 text-slate-700 border border-slate-300";
     let label = "Pending";
     if (v === "fulfilled" || v === "dispatched") {
-      color = "bg-emerald-100 text-emerald-700 border border-emerald-200";
+      color = "bg-emerald-100 text-emerald-700 border-emerald-200";
       label = "Dispatched";
     } else if (v.startsWith("partial")) {
-      color = "bg-amber-100 text-amber-700 border border-amber-200";
+      color = "bg-amber-100 text-amber-700 border-amber-200";
       label = "Partially Dispatched";
     }
     return (
@@ -396,6 +421,22 @@ function OrdersTab() {
               </select>
             </label>
 
+            {/* NEW: Import + Template */}
+            <button
+              type="button"
+              className="bg-slate-100 px-3 py-2 rounded"
+              onClick={() => { setShowImport(true); setImportResult(null); setImportFile(null); }}
+            >
+              Import Excel
+            </button>
+            <a
+              className="bg-slate-100 px-3 py-2 rounded"
+              href="/orders_import_template.xlsx"
+              download
+            >
+              Download Template
+            </a>
+
             <ExportSheetButton tab="orders" />
           </div>
         }
@@ -446,97 +487,159 @@ function OrdersTab() {
           </div>
         </form>
 
-{/* Orders table */}
-<StickyTable
-  headers={[
-    { label: "Order No", className: "w-20" },
-    { label: "Order Date", className: "w-28" },
-    { label: "Order By", className: "w-28" },
-    { label: "Company", className: "w-36" },
-    { label: "Grade", className: "w-24" },
-    { label: "Thickness", className: "w-24" },
-    { label: "Op. Size (mm)", className: "w-28" },
-    { label: "Ordered Pcs", className: "text-right w-28" },
-    { label: "Ordered (kg)", className: "text-right w-36" },
-    { label: "Fulfilled (kg)", className: "text-right w-36" },
-    { label: "Remaining (kg)", className: "text-right w-40" },
-    { label: "Cancelled On", className: "pl-3 w-36" },
-    { label: "Remarks", className: "pl-3 w-44" },
-    { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
-    { label: "Actions", className: "pl-4 w-40" },
-  ]}
->
-  {rows.map((o) => {
-    const isEdit = editingId === o.order_no && view !== "cancelled";
-    return (
-      <tr key={o.order_no} className="border-t">
-        <td>{o.order_no}</td>
-        <td>{o.order_date || "—"}</td>
-        <td>{o.order_by || "—"}</td>
-        <td>{o.company || "—"}</td>
-        <td>{o.grade || "—"}</td>
-        <td>{o.thickness_mm ?? "—"}</td>
-        <td>{o.op_size_mm ?? "—"}</td>
-        <td className="text-right">{fmt(o.ordered_qty_pcs)}</td>
-        <td className="text-right">{fmt(o.ordered_weight_kg)}</td>
-        <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
-        <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
-        <td className="pl-3">{o.cancelled_at || "—"}</td>
-        <td className="pl-3">{o.cancel_remarks || "—"}</td>
-        <td className="pl-3 border-l border-slate-200">
-          {renderStatus(o.status, o.cancelled_at)}
-        </td>
-        <td className="whitespace-nowrap pl-4">
-          {view === "cancelled" ? (
-            <>
-              <button
-                className="px-2 py-1 rounded border"
-                onClick={() => uncancelOrder(o.order_no)}
-              >
-                Uncancel
-              </button>
-              <button
-                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                onClick={() => deleteOrder(o.order_no)}
-              >
-                Del
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                className="px-2 py-1 rounded border"
-                onClick={() => startEdit(o)}
-              >
-                Edit
-              </button>
-              <button
-                className="px-2 py-1 rounded border border-rose-300 text-rose-600"
-                onClick={() => cancelOrder(o.order_no)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                onClick={() => deleteOrder(o.order_no)}
-              >
-                Del
-              </button>
-            </>
+        {/* Orders table */}
+        <StickyTable
+          headers={[
+            { label: "Order No", className: "w-20" },
+            { label: "Order Date", className: "w-28" },
+            { label: "Order By", className: "w-28" },
+            { label: "Company", className: "w-36" },
+            { label: "Grade", className: "w-24" },
+            { label: "Thickness", className: "w-24" },
+            { label: "Op. Size (mm)", className: "w-28" },
+            { label: "Ordered Pcs", className: "text-right w-28" },
+            { label: "Ordered (kg)", className: "text-right w-36" },
+            { label: "Fulfilled (kg)", className: "text-right w-36" },
+            { label: "Remaining (kg)", className: "text-right w-40" },
+            { label: "Cancelled On", className: "pl-3 w-36" },
+            { label: "Remarks", className: "pl-3 w-44" },
+            { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
+            { label: "Actions", className: "pl-4 w-40" },
+          ]}
+        >
+          {rows.map((o) => {
+            const isEdit = editingId === o.order_no && view !== "cancelled";
+            return (
+              <tr key={o.order_no} className="border-t">
+                <td>{o.order_no}</td>
+                <td>{o.order_date || "—"}</td>
+                <td>{o.order_by || "—"}</td>
+                <td>{o.company || "—"}</td>
+                <td>{o.grade || "—"}</td>
+                <td>{o.thickness_mm ?? "—"}</td>
+                <td>{o.op_size_mm ?? "—"}</td>
+                <td className="text-right">{fmt(o.ordered_qty_pcs)}</td>
+                <td className="text-right">{fmt(o.ordered_weight_kg)}</td>
+                <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
+                <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
+                <td className="pl-3">{o.cancelled_at || "—"}</td>
+                <td className="pl-3">{o.cancel_remarks || "—"}</td>
+                <td className="pl-3 border-l border-slate-200">
+                  {renderStatus(o.status, o.cancelled_at)}
+                </td>
+                <td className="whitespace-nowrap pl-4">
+                  {view === "cancelled" ? (
+                    <>
+                      <button
+                        className="px-2 py-1 rounded border"
+                        onClick={() => uncancelOrder(o.order_no)}
+                      >
+                        Uncancel
+                      </button>
+                      <button
+                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                        onClick={() => deleteOrder(o.order_no)}
+                      >
+                        Del
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="px-2 py-1 rounded border"
+                        onClick={() => startEdit(o)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="px-2 py-1 rounded border border-rose-300 text-rose-600"
+                        onClick={() => cancelOrder(o.order_no)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                        onClick={() => deleteOrder(o.order_no)}
+                      >
+                        Del
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+          {!rows.length && (
+            <tr>
+              <td className="py-4 text-slate-500" colSpan={15}>
+                {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
+              </td>
+            </tr>
           )}
-        </td>
-      </tr>
-    );
-  })}
-  {!rows.length && (
-    <tr>
-      <td className="py-4 text-slate-500" colSpan={15}>
-        {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
-      </td>
-    </tr>
-  )}
-</StickyTable>
+        </StickyTable>
       </Section>
+
+      {/* Import Orders Modal */}
+      {showImport && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white p-5 rounded-xl w-[520px]">
+            <div className="text-lg font-semibold mb-2">Bulk Import — Orders</div>
+            <p className="text-sm mb-3">
+              Upload a <b>.xlsx</b> using the template. Accepted date formats:{" "}
+              <code>DD-MM-YYYY</code>, <code>MM/DD/YYYY</code>, or Excel date serial.
+            </p>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+            />
+            <div className="mt-4 flex gap-2">
+              <button
+                className="bg-indigo-600 text-white px-3 py-2 rounded disabled:opacity-50"
+                disabled={importBusy}
+                onClick={handleImport}
+              >
+                {importBusy ? "Importing…" : "Import"}
+              </button>
+              <button
+                className="px-3 py-2 rounded border"
+                onClick={() => setShowImport(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            {importResult && (
+              <div className="mt-4 text-sm">
+                {importResult.ok !== false ? (
+                  <div className="bg-green-50 border border-green-200 p-2 rounded">
+                    <div>Inserted: <b>{importResult.inserted}</b></div>
+                    <div>Skipped: <b>{importResult.skipped}</b></div>
+                    {Array.isArray(importResult.errors) && importResult.errors.length > 0 && (
+                      <details className="mt-2">
+                        <summary>Row issues</summary>
+                        <ul className="list-disc ml-5">
+                          {importResult.errors.map((e, i) => (
+                            <li key={i}>Line {e.line}: {e.issues.join(", ")}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-red-50 border border-red-200 p-2 rounded">
+                    <div className="font-medium">Import failed</div>
+                    <div>{importResult.error || "Unknown error"}</div>
+                    {importResult.missing && importResult.missing.length > 0 && (
+                      <div className="mt-1">Missing columns: {importResult.missing.join(", ")}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Cancel popup */}
       {showCancelPrompt && (

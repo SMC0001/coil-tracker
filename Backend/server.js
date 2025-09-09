@@ -1244,6 +1244,89 @@ insertStock.run(
   }
 });
 
+// Bulk Import Orders from Excel
+app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) => {
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    // Adjust columns only if your DB names differ
+    const insert = db.prepare(`
+      INSERT INTO orders (
+        order_date, order_by, company, grade, thickness_mm, op_size_mm,
+        ordered_pcs, ordered_weight_kg, remarks, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')
+    `);
+
+    let inserted = 0;
+    let skipped = 0;
+    const errors = [];
+
+    const insertMany = db.transaction((rows) => {
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+
+        // --- Read from Excel headers (case-sensitive; keep exactly as below) ---
+        const orderDate   = parseDate(r["Order Date"]);           // accepts 09-01-2025, 09/01/2025, Excel date
+        const orderBy     = (r["Order By"] || "").toString().trim();
+        const company     = (r["Company"] || "").toString().trim();
+        const grade       = (r["Grade"] || "").toString().trim();
+        const thickness   = r["Thickness (mm)"] ?? null;
+        const opSize      = r["Op. Size (mm)"] ?? null;
+        const orderedPcs  = r["Ordered Pcs"] === "" ? null : r["Ordered Pcs"];
+        const orderedWt   = r["Ordered Weight (kg)"] === "" ? null : r["Ordered Weight (kg)"];
+        const remarks     = (r["Remarks"] || "").toString().trim() || null;
+
+        // --- Basic validation (tweak as you like) ---
+        const rowErrors = [];
+        if (!orderDate) rowErrors.push("Invalid/blank Order Date");
+        if (!company) rowErrors.push("Company required");
+        if (!grade) rowErrors.push("Grade required");
+        if (thickness === null || thickness === "") rowErrors.push("Thickness (mm) required");
+        if (opSize === null || opSize === "") rowErrors.push("Op. Size (mm) required");
+        if (orderedPcs == null && orderedWt == null) rowErrors.push("Either Ordered Pcs or Ordered Weight (kg) required");
+
+        if (rowErrors.length) {
+          skipped++;
+          errors.push({ line: i + 2, issues: rowErrors }); // +2 because header row is line 1
+          continue;
+        }
+
+        insert.run(
+          orderDate,
+          orderBy || null,
+          company,
+          grade,
+          Number(thickness),
+          Number(opSize),
+          orderedPcs == null || orderedPcs === "" ? null : Number(orderedPcs),
+          orderedWt == null || orderedWt === "" ? null : Number(orderedWt),
+          remarks
+        );
+
+        inserted++;
+      }
+    });
+
+    insertMany(rows);
+
+    // cleanup uploaded file
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      message: "✅ Orders import completed",
+      inserted,
+      skipped,
+      errors,
+      total: rows.length
+    });
+  } catch (err) {
+    console.error("❌ Orders import error:", err.message);
+    res.status(500).json({ error: "Failed to import orders" });
+  }
+});
+
 // List coils
 app.get('/api/coils', auth(), (req, res) => {
   const { q, limit = 200, grade, operator } = req.query;
