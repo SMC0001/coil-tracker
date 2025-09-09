@@ -4224,48 +4224,43 @@ function CoilSalesTab() {
       </form>
 
       {/* Sales History */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th>Sale Date</th>
-              <th>RN</th>
-              <th>Grade</th>
-              <th className="text-right">Weight (kg)</th>
-              <th>Buyer</th>
-              <th className="text-right">Price/kg</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {sales.map((s) => (
-              <tr key={s.id} className="border-t">
-                <td>{s.sale_date}</td>
-                <td>{s.rn}</td>
-                <td>{s.grade}</td>
-                <td className="text-right">{fmt(s.sold_weight_kg)}</td>
-                <td>{s.buyer || "—"}</td>
-                <td className="text-right">{s.price_per_kg || "—"}</td>
-                <td>
-                  <button
-                    onClick={() => undoSale(s.id)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Undo
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!sales.length && (
-              <tr>
-                <td colSpan={7} className="py-3 text-slate-500">
-                  No coil sales yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <StickyTable
+  headers={[
+    { label: "Sale Date", className: "w-32" },
+    { label: "RN", className: "w-28" },
+    { label: "Grade", className: "w-24" },
+    { label: "Weight (kg)", className: "text-right w-36" },
+    { label: "Buyer", className: "w-40" },
+    { label: "Price/kg", className: "text-right w-28" },
+    { label: "Actions", className: "w-28" },
+  ]}
+>
+  {sales.map((s) => (
+    <tr key={s.id} className="border-t">
+      <td>{s.sale_date}</td>
+      <td>{s.rn}</td>
+      <td>{s.grade}</td>
+      <td className="text-right">{fmt(s.sold_weight_kg)}</td>
+      <td>{s.buyer || "—"}</td>
+      <td className="text-right">{s.price_per_kg || "—"}</td>
+      <td>
+        <button
+          onClick={() => undoSale(s.id)}
+          className="text-red-600 hover:underline"
+        >
+          Undo
+        </button>
+      </td>
+    </tr>
+  ))}
+  {!sales.length && (
+    <tr>
+      <td colSpan={7} className="py-3 text-slate-500 text-center">
+        No coil sales yet.
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
