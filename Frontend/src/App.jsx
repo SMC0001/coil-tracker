@@ -717,7 +717,8 @@ function Coils({ onStartedCircle }) {
   const [selected, setSelected] = useState(null);
   const [editingCoil, setEditingCoil] = useState(false);
   const [editDraft, setEditDraft] = useState({});
-  const [importResult, setImportResult] = useState(null); // ✅ NEW
+  const [importResult, setImportResult] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const [newCoil, setNewCoil] = useState({
     rn: "",
@@ -745,6 +746,7 @@ function Coils({ onStartedCircle }) {
       },
     });
     setList(res.data || []);
+    setSelectedIds([]);
   };
   useEffect(() => {
     load();
@@ -820,6 +822,39 @@ function Coils({ onStartedCircle }) {
     }
   };
 
+// ✅ Bulk delete
+const bulkDelete = async () => {
+  if (!selectedIds.length) return alert("No coils selected.");
+  if (!confirm(`Delete ${selectedIds.length} coils? This cannot be undone.`))
+    return;
+  try {
+    const res = await axios.post(`${API}/coils/bulk-delete`, { ids: selectedIds });
+
+    // 🔥 Instead of reloading, update state directly
+    setList((prev) => prev.filter((row) => !selectedIds.includes(row.id)));
+    setSelectedIds([]);
+    setSelected(null);
+
+    console.log("Bulk deleted:", res.data.ids);
+  } catch {
+    alert("Error deleting selected coils");
+  }
+};
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === list.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(list.map((row) => row.id));
+    }
+  };
+
   const s = selected?.summary;
 
   const beginEditCoil = () => {
@@ -867,23 +902,17 @@ function Coils({ onStartedCircle }) {
   const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(`${API}/coils/import`, formData, {
         headers: {
-          "Authorization": token ? `Bearer ${token}` : "",
+          Authorization: token ? `Bearer ${token}` : "",
           "Content-Type": "multipart/form-data",
         },
       });
-
-      setImportResult({
-        type: "success",
-        data: res.data,
-      });
+      setImportResult({ type: "success", data: res.data });
       await load();
     } catch (err) {
       console.error("❌ Import failed", err);
@@ -892,7 +921,7 @@ function Coils({ onStartedCircle }) {
         error: err.response?.data?.error || "Import failed",
       });
     } finally {
-      e.target.value = ""; // reset file input
+      e.target.value = "";
     }
   };
 
@@ -903,8 +932,6 @@ function Coils({ onStartedCircle }) {
         right={
           <div className="flex items-center gap-2">
             <ExportSheetButton tab="coils" />
-
-            {/* 📥 Import Excel Button */}
             <label className="bg-emerald-600 text-white px-3 py-2 rounded-lg cursor-pointer">
               Import Excel
               <input
@@ -914,7 +941,13 @@ function Coils({ onStartedCircle }) {
                 onChange={handleImport}
               />
             </label>
-
+            <button
+              onClick={bulkDelete}
+              className="bg-red-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
+              disabled={!selectedIds.length}
+            >
+              Delete Selected
+            </button>
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -948,7 +981,7 @@ function Coils({ onStartedCircle }) {
           </div>
         }
       >
-        {/* ✅ Show Import Summary */}
+        {/* ✅ Import Result */}
         {importResult && (
           <div
             className={`p-2 mb-3 rounded ${
@@ -961,11 +994,6 @@ function Coils({ onStartedCircle }) {
               <>
                 ✅ Imported: {importResult.data.inserted}, Skipped:{" "}
                 {importResult.data.skipped}
-                {importResult.data.skippedRNs?.length > 0 && (
-                  <div>
-                    Skipped RNs: {importResult.data.skippedRNs.join(", ")}
-                  </div>
-                )}
               </>
             ) : (
               <>❌ {importResult.error}</>
@@ -1050,6 +1078,13 @@ function Coils({ onStartedCircle }) {
           <table className="w-full text-sm">
             <thead className="text-left text-slate-600 sticky top-0 bg-white">
               <tr>
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.length === list.length && list.length > 0}
+                    onChange={toggleSelectAll}
+                  />
+                </th>
                 <th className="py-2">RN</th>
                 <th>Grade</th>
                 <th>Spec</th>
@@ -1069,6 +1104,13 @@ function Coils({ onStartedCircle }) {
             <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
               {list.map((row) => (
                 <tr key={row.id} className="border-t">
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(row.id)}
+                      onChange={() => toggleSelect(row.id)}
+                    />
+                  </td>
                   <td className="py-2 font-medium">{String(row.rn)}</td>
                   <td>{row.grade || "—"}</td>
                   <td>
@@ -1115,7 +1157,7 @@ function Coils({ onStartedCircle }) {
               ))}
               {!list.length && (
                 <tr>
-                  <td className="py-4 text-slate-500" colSpan={14}>
+                  <td className="py-4 text-slate-500" colSpan={15}>
                     No coils yet.
                   </td>
                 </tr>
@@ -1129,7 +1171,7 @@ function Coils({ onStartedCircle }) {
       {s && (
         <Section title={`RN ${s.rn} — Overview`}>
           <div className="grid md:grid-cols-3 gap-3">
-            {/* Specs + edit */}
+            {/* Specs */}
             <div className="bg-slate-50 rounded-lg p-3">
               <div className="font-semibold mb-2">Specs</div>
               {!editingCoil ? (

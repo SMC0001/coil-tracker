@@ -1263,6 +1263,35 @@ app.get('/api/coils', auth(), (req, res) => {
   res.json(base.map(r => coilSummaryRow(r.id)));
 });
 
+// Bulk delete coils
+app.post('/api/coils/bulk-delete', auth("admin"), (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ error: "No coil IDs provided" });
+  }
+
+  try {
+    const bulkDelete = db.transaction((ids) => {
+      const placeholders = ids.map(() => '?').join(',');
+      // delete stock first, then coils
+      run(`DELETE FROM coil_stock WHERE coil_id IN (${placeholders})`, ids);
+      run(`DELETE FROM coils WHERE id IN (${placeholders})`, ids);
+    });
+
+    bulkDelete(ids);
+
+    res.json({
+      ok: true,
+      deleted: ids.length,
+      ids
+    });
+  } catch (err) {
+    console.error("❌ Bulk delete failed:", err.message);
+    res.status(500).json({ error: "Failed to delete coils" });
+  }
+});
+
+
 // Get coil summary
 app.get('/api/coils/:id/summary', auth(), (req, res) => {
   const s = coilSummaryRow(req.params.id);
