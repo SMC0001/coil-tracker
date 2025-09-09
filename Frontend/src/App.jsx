@@ -4295,51 +4295,43 @@ function CircleStockTab() {
         />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm tabular-nums">
-          <thead className="text-slate-600 sticky top-0 bg-white">
-            <tr>
-              <th className="text-left px-3 py-2">Production Date</th>
-              <th className="text-left px-3 py-2">Source</th>
-              <th className="text-left px-3 py-2">Origin</th>
-              <th className="text-left px-3 py-2">Grade</th>
-              <th className="text-left px-3 py-2 w-[110px]">Thickness (mm)</th>
-              <th className="text-left px-3 py-2 w-[80px]">Size (mm)</th>
-              <th className="text-right px-3 py-2 w-[140px]">Available Weight (kg)</th>
-              <th className="text-left px-3 py-2 w-auto">Order Match</th>
-            </tr>
-          </thead>
+      <StickyTable
+  headers={[
+    { label: "Production Date", className: "text-left w-40" },
+    { label: "Source", className: "text-left w-32" },
+    { label: "Origin", className: "text-left w-24" },
+    { label: "Grade", className: "text-left w-24" },
+    { label: "Thickness (mm)", className: "text-left w-28" },
+    { label: "Size (mm)", className: "text-left w-20" },
+    { label: "Available Weight (kg)", className: "text-right w-40" },
+    { label: "Order Match", className: "text-left w-auto" },
+  ]}
+>
+  {rows.map((s) => (
+    <tr key={s.id} className="border-t">
+      <td>{s.production_date}</td>
+      <td>{s.source_ref}</td>
+      <td>{s.source_type === "patta" ? "Patta" : "Circle"}</td>
+      <td>{s.grade || "—"}</td>
+      <td>{s.thickness_mm ?? "—"}</td>
+      <td>{s.size_mm ?? "—"}</td>
+      <td className="text-right font-semibold">
+        {fmt(s.available_weight_kg ?? s.available_kg ?? 0)}
+      </td>
+      <td>
+        <CircleOrderMatch stock={s} onSaved={load} />
+      </td>
+    </tr>
+  ))}
 
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {rows.map((s) => (
-              <tr key={s.id} className="border-t">
-                <td className="text-left px-3 py-2">{s.production_date}</td>
-                <td className="text-left px-3 py-2">{s.source_ref}</td>
-                <td className="text-left px-3 py-2">
-                  {s.source_type === "patta" ? "Patta" : "Circle"}
-                </td>
-                <td className="text-left px-3 py-2">{s.grade || "—"}</td>
-                <td className="text-left px-3 py-2 w-[110px]">{s.thickness_mm ?? "—"}</td>
-                <td className="text-left px-3 py-2 w-[80px]">{s.size_mm ?? "—"}</td>
-                <td className="text-right px-3 py-2 font-semibold w-[100px]">
-                  {fmt(s.available_weight_kg ?? s.available_kg ?? 0)}
-                </td>
-                <td className="text-left px-3 py-2 w-auto">
-                  <CircleOrderMatch stock={s} onSaved={load} />
-                </td>
-              </tr>
-            ))}
-
-            {!rows.length && (
-              <tr>
-                <td className="py-4 text-slate-500 text-center" colSpan={8}>
-                  All cleared 🎉 (no circle stock with balance &gt; 0)
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+  {!rows.length && (
+    <tr>
+      <td colSpan={8} className="py-4 text-slate-500 text-center">
+        All cleared 🎉 (no circle stock with balance &gt; 0)
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
