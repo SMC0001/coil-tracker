@@ -2711,119 +2711,110 @@ async function submitGlobalScrapSale(e) {
       </form>
 
       {/* Scrap stock table (read-only now) */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th>Date</th>
-              <th>Source RN</th>
-              <th>Source Type</th>
-              <th>Grade</th>
-              <th className="text-right">Remaining (kg)</th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {visibleRows.map((r, i) => {
-              const key = r.id ?? `${r.rn ?? "rn"}-${i}`;
-              const rem = getRemaining(r);
-              return (
-                <tr key={key} className="border-t">
-                  <td>{r.date ?? "—"}</td>
-                  <td>{r.rn ?? "—"}</td>
-                  <td className="capitalize">{r.source_type ?? "—"}</td>
-                  <td>{r.grade ?? "—"}</td>
-                  <td className="text-right">{fmt(rem)}</td>
-                </tr>
-              );
-            })}
+<StickyTable
+  headers={[
+    { label: "Date", className: "w-32" },
+    { label: "Source RN", className: "w-32" },
+    { label: "Source Type", className: "w-32" },
+    { label: "Grade", className: "w-28" },
+    { label: "Remaining (kg)", className: "text-right w-40" },
+  ]}
+>
+  {visibleRows.map((r, i) => {
+    const key = r.id ?? `${r.rn ?? "rn"}-${i}`;
+    const rem = getRemaining(r);
+    return (
+      <tr key={key} className="border-t">
+        <td>{r.date ?? "—"}</td>
+        <td>{r.rn ?? "—"}</td>
+        <td className="capitalize">{r.source_type ?? "—"}</td>
+        <td>{r.grade ?? "—"}</td>
+        <td className="text-right">{fmt(rem)}</td>
+      </tr>
+    );
+  })}
 
-            {!visibleRows.length && (
-              <tr>
-                <td className="py-4 text-slate-500" colSpan={5}>
-                  All cleared 🎉 (no scrap with balance &gt; 0)
-                </td>
-              </tr>
-            )}
+  {!visibleRows.length && (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={5}>
+        All cleared 🎉 (no scrap with balance &gt; 0)
+      </td>
+    </tr>
+  )}
 
-            {/* Totals */}
-            <tr className="border-t bg-yellow-50 font-semibold">
-              <td colSpan={4} className="text-right px-2 py-2">
-                Total Scrap (kg)
-              </td>
-              <td className="text-right px-2 py-2">{fmt(totals.total_kg ?? 0)}</td>
-            </tr>
-            <tr className="border-t bg-yellow-50">
-              <td colSpan={4} className="text-right px-2 py-2">
-                Scrap Sold (kg)
-              </td>
-              <td className="text-right px-2 py-2">{fmt(totals.sold_kg ?? 0)}</td>
-            </tr>
-            <tr className="border-t bg-emerald-50">
-              <td colSpan={4} className="text-right px-2 py-2 font-semibold">
-                Available Scrap (kg)
-              </td>
-              <td className="text-right px-2 py-2 font-semibold">
-                {fmt(totals.available_kg ?? 0)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+  {/* Totals */}
+  <tr className="border-t bg-yellow-50 font-semibold">
+    <td colSpan={4} className="text-right px-2 py-2">
+      Total Scrap (kg)
+    </td>
+    <td className="text-right px-2 py-2">{fmt(totals.total_kg ?? 0)}</td>
+  </tr>
+  <tr className="border-t bg-yellow-50">
+    <td colSpan={4} className="text-right px-2 py-2">
+      Scrap Sold (kg)
+    </td>
+    <td className="text-right px-2 py-2">{fmt(totals.sold_kg ?? 0)}</td>
+  </tr>
+  <tr className="border-t bg-emerald-50">
+    <td colSpan={4} className="text-right px-2 py-2 font-semibold">
+      Available Scrap (kg)
+    </td>
+    <td className="text-right px-2 py-2 font-semibold">
+      {fmt(totals.available_kg ?? 0)}
+    </td>
+  </tr>
+</StickyTable>
       </div>
 
       {/* Scrap Sales History */}
-      <div className="mt-6">
-        <h3 className="font-semibold mb-2">Recent Scrap Sales</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-slate-600">
-              <tr>
-                <th>Sale Date</th>
-                <th>Buyer</th>
-                <th>Grade</th>
-                <th>RN</th>
-                <th className="text-right">Weight (kg)</th>
-                <th className="text-right">Price/kg</th>
-                <th className="text-right">Total Value</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-              {sales.map((s) => (
-                <tr key={s.id} className="border-t">
-                  <td>{s.sale_date ?? "—"}</td>
-                  <td>{s.buyer ?? "—"}</td>
-                  <td>{s.grade ?? "—"}</td>
-                  <td>{s.rn ?? "—"}</td>
-                  <td className="text-right">{fmt(Number(s.weight_kg ?? 0))}</td>
-                  <td className="text-right">
-                    {s.price_per_kg != null ? fmt(Number(s.price_per_kg)) : "—"}
-                  </td>
-                  <td className="text-right">
-                    {s.price_per_kg != null
-                      ? fmt(Number(s.price_per_kg) * Number(s.weight_kg ?? 0))
-                      : "—"}
-                  </td>
-                  <td className="flex gap-2">
-                    <button
-                      onClick={() => undoScrapSale(s.id)}
-                      className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                    >
-                      Undo
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {!sales.length && (
-                <tr>
-                  <td className="py-4 text-slate-500" colSpan={8}>
-                    No scrap sales recorded.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+<div className="mt-6">
+  <h3 className="font-semibold mb-2">Recent Scrap Sales</h3>
+  <StickyTable
+    headers={[
+      { label: "Sale Date", className: "w-32" },
+      { label: "Buyer", className: "w-40" },
+      { label: "Grade", className: "w-28" },
+      { label: "RN", className: "w-32" },
+      { label: "Weight (kg)", className: "text-right w-40" },
+      { label: "Price/kg", className: "text-right w-32" },
+      { label: "Total Value", className: "text-right w-40" },
+      { label: "", className: "w-20" },
+    ]}
+  >
+    {sales.map((s) => (
+      <tr key={s.id} className="border-t">
+        <td>{s.sale_date ?? "—"}</td>
+        <td>{s.buyer ?? "—"}</td>
+        <td>{s.grade ?? "—"}</td>
+        <td>{s.rn ?? "—"}</td>
+        <td className="text-right">{fmt(Number(s.weight_kg ?? 0))}</td>
+        <td className="text-right">
+          {s.price_per_kg != null ? fmt(Number(s.price_per_kg)) : "—"}
+        </td>
+        <td className="text-right">
+          {s.price_per_kg != null
+            ? fmt(Number(s.price_per_kg) * Number(s.weight_kg ?? 0))
+            : "—"}
+        </td>
+        <td className="flex gap-2">
+          <button
+            onClick={() => undoScrapSale(s.id)}
+            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+          >
+            Undo
+          </button>
+        </td>
+      </tr>
+    ))}
+    {!sales.length && (
+      <tr>
+        <td className="py-4 text-slate-500 text-center" colSpan={8}>
+          No scrap sales recorded.
+        </td>
+      </tr>
+    )}
+  </StickyTable>
+</div>
     </Section>
   );
 }
@@ -2896,39 +2887,36 @@ function YieldTab() {
     </div>
   }
 >
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <Head w={150}>Coil RN</Head>
-              <Head w={100}>Grade</Head>
-              <Head w={150} right>Net Weight (kg)</Head>
-              <Head w={140} right>Circle Yield %</Head>
-              <Head w={140} right>Patta Yield %</Head>
-              <Head w={140} right>Total Yield %</Head>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {rows.map((r, i) => (
-              <tr key={r.id ?? r.rn ?? i} className="border-t">
-                <td>{r.rn || "—"}</td>
-                <td>{r.grade || "—"}</td>
-                <td className="text-right">{fmt(r.net_weight_kg)}</td>
-                <td className="text-right">{Number(r.circle_yield_pct || 0).toFixed(2)}</td>
-                <td className="text-right">{Number(r.patta_yield_pct  || 0).toFixed(2)}</td>
-                <td className="text-right font-semibold">
-                  {Number(r.total_yield_pct || 0).toFixed(2)}
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td className="py-4 text-slate-500" colSpan={6}>No data.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <StickyTable
+  headers={[
+    { label: "Coil RN", className: "w-40" },
+    { label: "Grade", className: "w-28" },
+    { label: "Net Weight (kg)", className: "text-right w-40" },
+    { label: "Circle Yield %", className: "text-right w-36" },
+    { label: "Patta Yield %", className: "text-right w-36" },
+    { label: "Total Yield %", className: "text-right w-36" },
+  ]}
+>
+  {rows.map((r, i) => (
+    <tr key={r.id ?? r.rn ?? i} className="border-t">
+      <td>{r.rn || "—"}</td>
+      <td>{r.grade || "—"}</td>
+      <td className="text-right">{fmt(r.net_weight_kg)}</td>
+      <td className="text-right">{Number(r.circle_yield_pct || 0).toFixed(2)}</td>
+      <td className="text-right">{Number(r.patta_yield_pct || 0).toFixed(2)}</td>
+      <td className="text-right font-semibold">
+        {Number(r.total_yield_pct || 0).toFixed(2)}
+      </td>
+    </tr>
+  ))}
+  {!rows.length && (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={6}>
+        No data.
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
