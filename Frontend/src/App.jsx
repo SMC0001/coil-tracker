@@ -4686,62 +4686,54 @@ function CircleSalesTab() {
         </form>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th>Sale Date</th>
-              <th>Source</th>
-              <th>Grade</th>
-              <th>Thickness (mm)</th>
-              <th>Size (mm)</th>
-              <th>Buyer</th>
-              <th className="text-right">Pcs</th>
-              <th className="text-right">Weight (kg)</th>
-              <th className="text-right">Price/kg</th>
-              <th className="text-right">Total Value</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {sales.map((s) => (
-              <tr key={s.id} className="border-t">
-                <td>{s.sale_date}</td>
-                <td>{s.source_ref}</td> 
-                <td>{s.grade ?? "—"}</td>
-                <td>{s.thickness_mm ?? s.thickness ?? "—"}</td>
-                <td>{s.size_mm ?? "—"}</td>
-                <td>{s.buyer || "—"}</td>
-                <td className="text-right">{fmt(s.sold_qty)}</td>
-                <td className="text-right">{fmt(s.sold_weight_kg)}</td>
-                <td className="text-right">
-                  {s.price_per_kg ? fmt(s.price_per_kg) : "—"}
-                </td>
-                <td className="text-right">
-                  {s.price_per_kg
-                    ? fmt(s.sold_weight_kg * s.price_per_kg)
-                    : "—"}
-                </td>
-                <td>
-                  <button
-                    onClick={() => undo(s.id)}
-                    className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                  >
-                    Undo
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!sales.length && (
-              <tr>
-                <td className="py-4 text-slate-500" colSpan={11}>
-                  No circle sales recorded.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <StickyTable
+  headers={[
+    { label: "Sale Date", className: "w-28" },
+    { label: "Source", className: "w-32" },
+    { label: "Grade", className: "w-24" },
+    { label: "Thickness (mm)", className: "w-28" },
+    { label: "Size (mm)", className: "w-20" },
+    { label: "Buyer", className: "w-36" },
+    { label: "Pcs", className: "text-right w-24" },
+    { label: "Weight (kg)", className: "text-right w-32" },
+    { label: "Price/kg", className: "text-right w-28" },
+    { label: "Total Value", className: "text-right w-32" },
+    { label: "", className: "w-20" },
+  ]}
+>
+  {sales.map((s) => (
+    <tr key={s.id} className="border-t">
+      <td>{s.sale_date}</td>
+      <td>{s.source_ref}</td>
+      <td>{s.grade ?? "—"}</td>
+      <td>{s.thickness_mm ?? s.thickness ?? "—"}</td>
+      <td>{s.size_mm ?? "—"}</td>
+      <td>{s.buyer || "—"}</td>
+      <td className="text-right">{fmt(s.sold_qty)}</td>
+      <td className="text-right">{fmt(s.sold_weight_kg)}</td>
+      <td className="text-right">{s.price_per_kg ? fmt(s.price_per_kg) : "—"}</td>
+      <td className="text-right">
+        {s.price_per_kg ? fmt(s.sold_weight_kg * s.price_per_kg) : "—"}
+      </td>
+      <td>
+        <button
+          onClick={() => undo(s.id)}
+          className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+        >
+          Undo
+        </button>
+      </td>
+    </tr>
+  ))}
+
+  {!sales.length && (
+    <tr>
+      <td className="py-4 text-slate-500" colSpan={11}>
+        No circle sales recorded.
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
