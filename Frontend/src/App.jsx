@@ -3788,41 +3788,36 @@ function PLStockTab() {
       </form>
 
       {/* PL stock table (read-only now) */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th>Date</th>
-              <th>Source</th>
-              <th>Grade</th>
-              <th className="text-right w-[140px]">Thickness (mm)</th>
-              <th className="border-l border-slate-200 pl-4">Size (mm)</th>
-              <th className="text-right">Available Weight (kg)</th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t">
-                <td>{r.production_date}</td>
-                <td>{r.source_ref}</td>
-                <td>{r.grade || "—"}</td>
-                <td className="text-right">{r.thickness_mm ?? r.thickness ?? "—"}</td>
-                <td className="border-l border-slate-200 pl-4">{r.size_mm}</td>
-                <td className="text-right font-semibold">
-                  {fmt(r.available_weight_kg ?? r.available_kg ?? 0)}
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td className="py-4 text-slate-500" colSpan={6}>
-                  All cleared 🎉 (no PL stock with balance &gt; 0)
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+<StickyTable
+  headers={[
+    { label: "Date", className: "w-32" },
+    { label: "Source", className: "w-36" },
+    { label: "Grade", className: "w-24" },
+    { label: "Thickness (mm)", className: "text-right w-36" },
+    { label: "Size (mm)", className: "pl-4 border-l border-slate-200 w-40" },
+    { label: "Available Weight (kg)", className: "text-right w-44" },
+  ]}
+>
+  {rows.map((r) => (
+    <tr key={r.id} className="border-t">
+      <td>{r.production_date}</td>
+      <td>{r.source_ref}</td>
+      <td>{r.grade || "—"}</td>
+      <td className="text-right">{r.thickness_mm ?? r.thickness ?? "—"}</td>
+      <td className="pl-4 border-l border-slate-200">{r.size_mm}</td>
+      <td className="text-right font-semibold">
+        {fmt(r.available_weight_kg ?? r.available_kg ?? 0)}
+      </td>
+    </tr>
+  ))}
+  {!rows.length && (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={6}>
+        All cleared 🎉 (no PL stock with balance &gt; 0)
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
