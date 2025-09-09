@@ -640,59 +640,43 @@ function DispatchedTab() {
           </div>
         }
       >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-slate-600">
-              <tr>
-                <Head w={80}>Order No</Head>
-                <Head w={120}>Order Date</Head>
-                <Head w={140}>Order By</Head>
-                <Head w={140}>Company</Head>
-                <Head w={100}>Grade</Head>
-                <Head w={100}>Thickness</Head>
-                <Head w={110}>Op. Size (mm)</Head>
-                <Head right w={140}>Ordered (kg)</Head>
-                <Head right w={140}>Fulfilled (kg)</Head>
-                <Head w={140} className="border-l border-slate-200 pl-3">
-                  Status
-                </Head>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-              {rows.length > 0 ? (
-                rows.map((o) => (
-                  <tr key={o.order_no} className="border-t">
-                    <td className="px-3 py-2.5">{o.order_no}</td>
-                    <td className="px-3 py-2.5">{o.order_date || "—"}</td>
-                    <td className="px-3 py-2.5">{o.order_by || "—"}</td>
-                    <td className="px-3 py-2.5">{o.company || "—"}</td>
-                    <td className="px-3 py-2.5">{o.grade || "—"}</td>
-                    <td className="px-3 py-2.5">{o.thickness_mm ?? "—"}</td>
-                    <td className="px-3 py-2.5">{o.op_size_mm ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-right">
-                      {fmt(o.ordered_weight_kg)}
-                    </td>
-                    <td className="px-3 py-2.5 text-right">
-                      {fmt(o.fulfilled_weight_kg)}
-                    </td>
-                    <td className="px-3 py-2.5 border-l border-slate-200">
-                      {renderStatus()}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    className="py-4 text-slate-500 text-center"
-                    colSpan={10}
-                  >
-                    No dispatched orders.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+<StickyTable
+  headers={[
+    { label: "Order No", className: "w-20" },
+    { label: "Order Date", className: "w-28" },
+    { label: "Order By", className: "w-36" },
+    { label: "Company", className: "w-36" },
+    { label: "Grade", className: "w-24" },
+    { label: "Thickness", className: "w-24" },
+    { label: "Op. Size (mm)", className: "w-28" },
+    { label: "Ordered (kg)", className: "text-right w-36" },
+    { label: "Fulfilled (kg)", className: "text-right w-36" },
+    { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
+  ]}
+>
+  {rows.length > 0 ? (
+    rows.map((o) => (
+      <tr key={o.order_no} className="border-t">
+        <td className="px-3 py-2.5">{o.order_no}</td>
+        <td className="px-3 py-2.5">{o.order_date || "—"}</td>
+        <td className="px-3 py-2.5">{o.order_by || "—"}</td>
+        <td className="px-3 py-2.5">{o.company || "—"}</td>
+        <td className="px-3 py-2.5">{o.grade || "—"}</td>
+        <td className="px-3 py-2.5">{o.thickness_mm ?? "—"}</td>
+        <td className="px-3 py-2.5">{o.op_size_mm ?? "—"}</td>
+        <td className="px-3 py-2.5 text-right">{fmt(o.ordered_weight_kg)}</td>
+        <td className="px-3 py-2.5 text-right">{fmt(o.fulfilled_weight_kg)}</td>
+        <td className="px-3 py-2.5 border-l border-slate-200">{renderStatus()}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={10}>
+        No dispatched orders.
+      </td>
+    </tr>
+  )}
+</StickyTable>
       </Section>
     </div>
   );
