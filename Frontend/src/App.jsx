@@ -1128,90 +1128,90 @@ function Coils({ onStartedCircle }) {
         </form>
 
         {/* Coils table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-slate-600 sticky top-0 bg-white">
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.length === list.length && list.length > 0}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th className="py-2">RN</th>
-                <th>Grade</th>
-                <th>Spec</th>
-                <th>Supplier</th>
-                <th>Purchased On</th>
-                <th className="text-right">Purchased (kg)</th>
-                <th className="text-right">Purchase Price (₹/kg)</th>
-                <th className="text-right">Direct Sold (kg)</th>
-                <th className="text-right">Circles (kg)</th>
-                <th className="text-right">Patta (kg)</th>
-                <th className="text-right">PL (kg)</th>
-                <th className="text-right">Scrap (kg)</th>
-                <th className="text-right">Balance (kg)</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-              {list.map((row) => (
-                <tr key={row.id} className="border-t">
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(row.id)}
-                      onChange={() => toggleSelect(row.id)}
-                    />
-                  </td>
-                  <td className="py-2 font-medium">{String(row.rn)}</td>
-                  <td>{row.grade || "—"}</td>
-                  <td>
-                    {[row.thickness ? `${row.thickness}mm` : null, row.width ? `${row.width}mm` : null]
-                      .filter(Boolean)
-                      .join(" × ") || "—"}
-                  </td>
-                  <td>{row.supplier || "—"}</td>
-                  <td>{row.purchase_date || "—"}</td>
-                  <td className="text-right">{fmt(row.purchased_kg)}</td>
-                  <td className="text-right">
-                    {row.purchase_price == null ? "—" : Number(row.purchase_price).toFixed(2)}
-                  </td>
-                  <td className="text-right">{fmt(row.direct_sold_kg)}</td>
-                  <td className="text-right">{fmt(row.circles_kg)}</td>
-                  <td className="text-right">{fmt(row.patta_kg)}</td>
-                  <td className="text-right">{fmt(row.pl_kg)}</td>
-                  <td className="text-right">{fmt(row.scrap_kg)}</td>
-                  <td className="text-right font-semibold">{fmt(row.balance_kg)}</td>
-                  <td className="text-right">
-                    <div className="flex gap-1">
-                      <button
-                        className="px-2 py-1 border rounded"
-                        onClick={() => loadSummary(row.id)}
-                      >
-                        View
-                      </button>
-                      <button
-                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                        onClick={() => deleteCoil(row.id)}
-                      >
-                        Del
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!list.length && (
-                <tr>
-                  <td className="py-4 text-slate-500" colSpan={15}>
-                    No coils yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+<div className="overflow-y-auto overflow-x-auto max-h-[70vh] border rounded">
+  <table className="w-full text-sm">
+    <thead className="text-left text-slate-600 sticky top-0 bg-gray-100 z-10 shadow-sm">
+      <tr>
+        <th className="py-2">
+          <input
+            type="checkbox"
+            checked={selectedIds.length === list.length && list.length > 0}
+            onChange={toggleSelectAll}
+          />
+        </th>
+        <th className="py-2">RN</th>
+        <th>Grade</th>
+        <th>Spec</th>
+        <th>Supplier</th>
+        <th>Purchased On</th>
+        <th className="text-right">Purchased (kg)</th>
+        <th className="text-right">Purchase Price (₹/kg)</th>
+        <th className="text-right">Direct Sold (kg)</th>
+        <th className="text-right">Circles (kg)</th>
+        <th className="text-right">Patta (kg)</th>
+        <th className="text-right">PL (kg)</th>
+        <th className="text-right">Scrap (kg)</th>
+        <th className="text-right">Balance (kg)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
+      {list.map((row) => (
+        <tr key={row.id} className="border-t">
+          <td>
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(row.id)}
+              onChange={() => toggleSelect(row.id)}
+            />
+          </td>
+          <td className="py-2 font-medium">{String(row.rn)}</td>
+          <td>{row.grade || "—"}</td>
+          <td>
+            {[row.thickness ? `${row.thickness}mm` : null, row.width ? `${row.width}mm` : null]
+              .filter(Boolean)
+              .join(" × ") || "—"}
+          </td>
+          <td>{row.supplier || "—"}</td>
+          <td>{row.purchase_date || "—"}</td>
+          <td className="text-right">{fmt(row.purchased_kg)}</td>
+          <td className="text-right">
+            {row.purchase_price == null ? "—" : Number(row.purchase_price).toFixed(2)}
+          </td>
+          <td className="text-right">{fmt(row.direct_sold_kg)}</td>
+          <td className="text-right">{fmt(row.circles_kg)}</td>
+          <td className="text-right">{fmt(row.patta_kg)}</td>
+          <td className="text-right">{fmt(row.pl_kg)}</td>
+          <td className="text-right">{fmt(row.scrap_kg)}</td>
+          <td className="text-right font-semibold">{fmt(row.balance_kg)}</td>
+          <td className="text-right">
+            <div className="flex gap-1">
+              <button
+                className="px-2 py-1 border rounded"
+                onClick={() => loadSummary(row.id)}
+              >
+                View
+              </button>
+              <button
+                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                onClick={() => deleteCoil(row.id)}
+              >
+                Del
+              </button>
+            </div>
+          </td>
+        </tr>
+      ))}
+      {!list.length && (
+        <tr>
+          <td className="py-4 text-slate-500" colSpan={15}>
+            No coils yet.
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>
       </Section>
 
       {/* Overview + Start Circle Run + Edit Coil */}
