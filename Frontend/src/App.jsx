@@ -4089,49 +4089,43 @@ function CoilStockTab() {
         />
       </div>
 
-      {/* Stock table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th>RN</th>
-              <th>Grade</th>
-              <th>Spec</th>
-              <th>Supplier</th>
-              <th>Purchase Date</th>
-              <th className="text-right">Available Weight (kg)</th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {rows.map((s) => (
-              <tr key={s.id} className="border-t">
-                <td>{s.rn}</td>
-                <td>{s.grade || "—"}</td>
-                <td>
-                  {[
-                    s.thickness ? `${s.thickness}mm` : null,
-                    s.width ? `${s.width}mm` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" × ") || "—"}
-                </td>
-                <td>{s.supplier || "—"}</td>
-                <td>{s.purchase_date || "—"}</td>
-                <td className="text-right font-semibold">
-                  {fmt(s.available_weight_kg)}
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td className="py-4 text-slate-500" colSpan={6}>
-                  All cleared 🎉 (no coils with balance &gt; 0)
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <StickyTable
+  headers={[
+    { label: "RN", className: "w-28" },
+    { label: "Grade", className: "w-24" },
+    { label: "Spec", className: "w-40" },
+    { label: "Supplier", className: "w-40" },
+    { label: "Purchase Date", className: "w-32" },
+    { label: "Available Weight (kg)", className: "text-right w-48" },
+  ]}
+>
+  {rows.map((s) => (
+    <tr key={s.id} className="border-t">
+      <td>{s.rn}</td>
+      <td>{s.grade || "—"}</td>
+      <td>
+        {[
+          s.thickness ? `${s.thickness}mm` : null,
+          s.width ? `${s.width}mm` : null,
+        ]
+          .filter(Boolean)
+          .join(" × ") || "—"}
+      </td>
+      <td>{s.supplier || "—"}</td>
+      <td>{s.purchase_date || "—"}</td>
+      <td className="text-right font-semibold">
+        {fmt(s.available_weight_kg)}
+      </td>
+    </tr>
+  ))}
+  {!rows.length && (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={6}>
+        All cleared 🎉 (no coils with balance &gt; 0)
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
