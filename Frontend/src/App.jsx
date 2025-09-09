@@ -445,106 +445,96 @@ function OrdersTab() {
           </div>
         </form>
 
-        {/* Orders table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="text-left text-slate-600">
-              <tr>
-                <Head w={80}>Order No</Head>
-                <Head w={120}>Order Date</Head>
-                <Head w={120}>Order By</Head>
-                <Head w={140}>Company</Head>
-                <Head w={100}>Grade</Head>
-                <Head w={100}>Thickness</Head>
-                <Head w={110}>Op. Size (mm)</Head>
-                <Head right w={110}>Ordered Pcs</Head>
-                <Head right w={140}><span className="pr-6 inline-block">Ordered (kg)</span></Head>
-                <Head right w={140}>Fulfilled (kg)</Head>
-                <Head right w={160} className="pr-4">Remaining (kg)</Head>
-                <Head w={140} className="pl-3">Cancelled On</Head>
-                <Head w={180} className="pl-3">Remarks</Head>
-                <Head w={140} className="border-l border-slate-200 pl-3">Status</Head>
-                <Head w={160}><span className="pl-4 inline-block">Actions</span></Head>
-              </tr>
-            </thead>
-            <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-              {rows.map((o) => {
-                const isEdit = editingId === o.order_no && view !== "cancelled";
-                return (
-                  <tr key={o.order_no} className="border-t">
-                    <td>{o.order_no}</td>
-                    <td>{o.order_date || "—"}</td>
-                    <td>{o.order_by || "—"}</td>
-                    <td>{o.company || "—"}</td>
-                    <td>{o.grade || "—"}</td>
-                    <td>{o.thickness_mm ?? "—"}</td>
-                    <td>{o.op_size_mm ?? "—"}</td>
-                    <td className="text-right">{fmt(o.ordered_qty_pcs)}</td>
-                    <td className="text-right pr-6">{fmt(o.ordered_weight_kg)}</td>
-                    <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
-                    <td className="text-right pr-6">{fmt(o.remaining_weight_kg)}</td>
-                    <td className="pl-3">{o.cancelled_at || "—"}</td>
-                    <td className="pl-3">{o.cancel_remarks || "—"}</td>
-                    <td className="border-l border-slate-200 pl-3">
-                      {renderStatus(o.status, o.cancelled_at)}
-                    </td>
-                    <td className="whitespace-nowrap pl-4">
-                      {view === "cancelled" ? (
-                        <>
-                          <button
-                            className="px-2 py-1 rounded border"
-                            onClick={() => uncancelOrder(o.order_no)}
-                            type="button"
-                          >
-                            Uncancel
-                          </button>
-                          <button
-                            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                            onClick={() => deleteOrder(o.order_no)}
-                            type="button"
-                          >
-                            Del
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            className="px-2 py-1 rounded border"
-                            onClick={() => startEdit(o)}
-                            type="button"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="px-2 py-1 rounded border border-rose-300 text-rose-600"
-                            onClick={() => cancelOrder(o.order_no)}
-                            type="button"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                            onClick={() => deleteOrder(o.order_no)}
-                            type="button"
-                          >
-                            Del
-                          </button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-              {!rows.length && (
-                <tr>
-                  <td className="py-4 text-slate-500" colSpan={15}>
-                    {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+{/* Orders table */}
+<StickyTable
+  headers={[
+    { label: "Order No", className: "w-20" },
+    { label: "Order Date", className: "w-28" },
+    { label: "Order By", className: "w-28" },
+    { label: "Company", className: "w-36" },
+    { label: "Grade", className: "w-24" },
+    { label: "Thickness", className: "w-24" },
+    { label: "Op. Size (mm)", className: "w-28" },
+    { label: "Ordered Pcs", className: "text-right w-28" },
+    { label: "Ordered (kg)", className: "text-right w-36" },
+    { label: "Fulfilled (kg)", className: "text-right w-36" },
+    { label: "Remaining (kg)", className: "text-right w-40" },
+    { label: "Cancelled On", className: "pl-3 w-36" },
+    { label: "Remarks", className: "pl-3 w-44" },
+    { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
+    { label: "Actions", className: "pl-4 w-40" },
+  ]}
+>
+  {rows.map((o) => {
+    const isEdit = editingId === o.order_no && view !== "cancelled";
+    return (
+      <tr key={o.order_no} className="border-t">
+        <td>{o.order_no}</td>
+        <td>{o.order_date || "—"}</td>
+        <td>{o.order_by || "—"}</td>
+        <td>{o.company || "—"}</td>
+        <td>{o.grade || "—"}</td>
+        <td>{o.thickness_mm ?? "—"}</td>
+        <td>{o.op_size_mm ?? "—"}</td>
+        <td className="text-right">{fmt(o.ordered_qty_pcs)}</td>
+        <td className="text-right">{fmt(o.ordered_weight_kg)}</td>
+        <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
+        <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
+        <td className="pl-3">{o.cancelled_at || "—"}</td>
+        <td className="pl-3">{o.cancel_remarks || "—"}</td>
+        <td className="pl-3 border-l border-slate-200">
+          {renderStatus(o.status, o.cancelled_at)}
+        </td>
+        <td className="whitespace-nowrap pl-4">
+          {view === "cancelled" ? (
+            <>
+              <button
+                className="px-2 py-1 rounded border"
+                onClick={() => uncancelOrder(o.order_no)}
+              >
+                Uncancel
+              </button>
+              <button
+                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                onClick={() => deleteOrder(o.order_no)}
+              >
+                Del
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="px-2 py-1 rounded border"
+                onClick={() => startEdit(o)}
+              >
+                Edit
+              </button>
+              <button
+                className="px-2 py-1 rounded border border-rose-300 text-rose-600"
+                onClick={() => cancelOrder(o.order_no)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                onClick={() => deleteOrder(o.order_no)}
+              >
+                Del
+              </button>
+            </>
+          )}
+        </td>
+      </tr>
+    );
+  })}
+  {!rows.length && (
+    <tr>
+      <td className="py-4 text-slate-500" colSpan={15}>
+        {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
+      </td>
+    </tr>
+  )}
+</StickyTable>
       </Section>
 
       {/* Cancel popup */}
