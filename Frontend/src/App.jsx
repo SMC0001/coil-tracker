@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Login from "./Login.jsx";                // ✅ your Login.jsx file
 import { useAuth } from "./AuthContext.jsx";    // ✅ direct file, no "auth/" folder
 import Protected from "./srcauthProtected.jsx"; // ✅ match actual filename
+import StickyTable from "./components/StickyTable";
 
 
 // 🔹 Axios Interceptor: Attach token to every request automatically
