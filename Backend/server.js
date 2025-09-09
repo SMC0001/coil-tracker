@@ -1247,17 +1247,35 @@ insertStock.run(
 // Bulk Import Orders from Excel
 app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) => {
   try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
     const workbook = xlsx.readFile(req.file.path);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json(sheet);
+    if (!rows.length) return res.status(400).json({ error: "No rows found in worksheet" });
 
-    // Adjust columns only if your DB names differ
     const insert = db.prepare(`
       INSERT INTO orders (
         order_date, order_by, company, grade, thickness_mm, op_size_mm,
-        ordered_pcs, ordered_weight_kg, remarks, status
+        ordered_qty_pcs, ordered_weight_kg, remarks, status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')
     `);
+
+    const isBlank = (v) =>
+      v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+
+    const dashToNull = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      return s === "" || s === "-" ? null : s;
+    };
+
+    const numOrNull = (v) => {
+      const s = dashToNull(v);
+      if (s === null) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    };
 
     let inserted = 0;
     let skipped = 0;
@@ -1267,63 +1285,62 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
 
-        // --- Read from Excel headers (case-sensitive; keep exactly as below) ---
-        const orderDate   = parseDate(r["Order Date"]);           // accepts 09-01-2025, 09/01/2025, Excel date
-        const orderBy     = (r["Order By"] || "").toString().trim();
-        const company     = (r["Company"] || "").toString().trim();
-        const grade       = (r["Grade"] || "").toString().trim();
-        const thickness   = r["Thickness (mm)"] ?? null;
-        const opSize      = r["Op. Size (mm)"] ?? null;
-        const orderedPcs  = r["Ordered Pcs"] === "" ? null : r["Ordered Pcs"];
-        const orderedWt   = r["Ordered Weight (kg)"] === "" ? null : r["Ordered Weight (kg)"];
-        const remarks     = (r["Remarks"] || "").toString().trim() || null;
+        const orderDate = parseDate(r["Order Date"]); // supports 8/30/2025 etc.
+        const orderBy   = dashToNull(r["Order By"]);
+        const company   = dashToNull(r["Company"]);
+        const grade     = dashToNull(r["Grade"]);
+        const thickness = numOrNull(r["Thickness (mm)"]);
+        const opSize    = numOrNull(r["Op. Size (mm)"]);
+        const orderedPcs= numOrNull(r["Ordered Pcs"]);          // "—" or "-" -> null
+        const orderedWt = numOrNull(r["Ordered Weight (kg)"]);  // "—" or "-" -> null
+        const remarks   = dashToNull(r["Remarks"]);
 
-        // --- Basic validation (tweak as you like) ---
         const rowErrors = [];
         if (!orderDate) rowErrors.push("Invalid/blank Order Date");
         if (!company) rowErrors.push("Company required");
         if (!grade) rowErrors.push("Grade required");
-        if (thickness === null || thickness === "") rowErrors.push("Thickness (mm) required");
-        if (opSize === null || opSize === "") rowErrors.push("Op. Size (mm) required");
-        if (orderedPcs == null && orderedWt == null) rowErrors.push("Either Ordered Pcs or Ordered Weight (kg) required");
+        if (thickness === null) rowErrors.push("Thickness (mm) required/invalid");
+        if (opSize === null) rowErrors.push("Op. Size (mm) required/invalid");
+        if (orderedPcs == null && orderedWt == null) {
+          rowErrors.push("Either Ordered Pcs or Ordered Weight (kg) required");
+        }
 
         if (rowErrors.length) {
           skipped++;
-          errors.push({ line: i + 2, issues: rowErrors }); // +2 because header row is line 1
+          errors.push({ line: i + 2, issues: rowErrors }); // +2 for header row
           continue;
         }
 
         insert.run(
           orderDate,
-          orderBy || null,
+          orderBy,
           company,
           grade,
-          Number(thickness),
-          Number(opSize),
-          orderedPcs == null || orderedPcs === "" ? null : Number(orderedPcs),
-          orderedWt == null || orderedWt === "" ? null : Number(orderedWt),
+          thickness,
+          opSize,
+          orderedPcs,
+          orderedWt,
           remarks
         );
-
         inserted++;
       }
     });
 
     insertMany(rows);
 
-    // cleanup uploaded file
-    fs.unlinkSync(req.file.path);
+    try { fs.unlinkSync(req.file.path); } catch {}
 
-    res.json({
+    return res.json({
       message: "✅ Orders import completed",
       inserted,
       skipped,
       errors,
-      total: rows.length
+      total: rows.length,
     });
   } catch (err) {
-    console.error("❌ Orders import error:", err.message);
-    res.status(500).json({ error: "Failed to import orders" });
+    console.error("❌ Orders import error:", err);
+    try { if (req.file?.path) fs.unlinkSync(req.file.path); } catch {}
+    return res.status(500).json({ error: err.message || "Failed to import orders" });
   }
 });
 
