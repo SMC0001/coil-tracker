@@ -717,6 +717,7 @@ function Coils({ onStartedCircle }) {
   const [selected, setSelected] = useState(null);
   const [editingCoil, setEditingCoil] = useState(false);
   const [editDraft, setEditDraft] = useState({});
+  const [importResult, setImportResult] = useState(null); // ✅ NEW
 
   const [newCoil, setNewCoil] = useState({
     rn: "",
@@ -862,6 +863,39 @@ function Coils({ onStartedCircle }) {
   const toNum = (v) =>
     v === "" || v === null || v === undefined ? null : Number(v);
 
+  // 📥 Import handler
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(`${API}/coils/import`, formData, {
+        headers: {
+          "Authorization": token ? `Bearer ${token}` : "",
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setImportResult({
+        type: "success",
+        data: res.data,
+      });
+      await load();
+    } catch (err) {
+      console.error("❌ Import failed", err);
+      setImportResult({
+        type: "error",
+        error: err.response?.data?.error || "Import failed",
+      });
+    } finally {
+      e.target.value = ""; // reset file input
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Section
@@ -869,6 +903,18 @@ function Coils({ onStartedCircle }) {
         right={
           <div className="flex items-center gap-2">
             <ExportSheetButton tab="coils" />
+
+            {/* 📥 Import Excel Button */}
+            <label className="bg-emerald-600 text-white px-3 py-2 rounded-lg cursor-pointer">
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImport}
+              />
+            </label>
+
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -902,7 +948,32 @@ function Coils({ onStartedCircle }) {
           </div>
         }
       >
-        {/* New coil */}
+        {/* ✅ Show Import Summary */}
+        {importResult && (
+          <div
+            className={`p-2 mb-3 rounded ${
+              importResult.type === "success"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {importResult.type === "success" ? (
+              <>
+                ✅ Imported: {importResult.data.inserted}, Skipped:{" "}
+                {importResult.data.skipped}
+                {importResult.data.skippedRNs?.length > 0 && (
+                  <div>
+                    Skipped RNs: {importResult.data.skippedRNs.join(", ")}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>❌ {importResult.error}</>
+            )}
+          </div>
+        )}
+
+        {/* New coil form */}
         <form
           onSubmit={createCoil}
           className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
@@ -917,13 +988,13 @@ function Coils({ onStartedCircle }) {
             <div className="text-slate-600 mb-1">Grade</div>
             <select
               value={newCoil.grade}
-              onChange={(e) =>
-                setNewCoil({ ...newCoil, grade: e.target.value })
-              }
+              onChange={(e) => setNewCoil({ ...newCoil, grade: e.target.value })}
               className="border rounded-lg px-3 py-2"
             >
               {GRADES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
           </label>
@@ -942,9 +1013,7 @@ function Coils({ onStartedCircle }) {
           <Input
             label="Supplier"
             value={newCoil.supplier}
-            onChange={(e) =>
-              setNewCoil({ ...newCoil, supplier: e.target.value })
-            }
+            onChange={(e) => setNewCoil({ ...newCoil, supplier: e.target.value })}
           />
           <NumberInput
             label="Purchase Weight (kg)"
@@ -1060,36 +1129,24 @@ function Coils({ onStartedCircle }) {
       {s && (
         <Section title={`RN ${s.rn} — Overview`}>
           <div className="grid md:grid-cols-3 gap-3">
+            {/* Specs + edit */}
             <div className="bg-slate-50 rounded-lg p-3">
               <div className="font-semibold mb-2">Specs</div>
               {!editingCoil ? (
                 <>
                   <div className="text-sm space-y-1">
-                    <div>
-                      <b>Grade:</b> {s.grade || "—"}
-                    </div>
-                    <div>
-                      <b>Thickness:</b> {s.thickness ?? "—"} mm
-                    </div>
-                    <div>
-                      <b>Width:</b> {s.width ?? "—"} mm
-                    </div>
-                    <div>
-                      <b>Supplier:</b> {s.supplier || "—"}
-                    </div>
-                    <div>
-                      <b>Purchased On:</b> {s.purchase_date || "—"}
-                    </div>
+                    <div><b>Grade:</b> {s.grade || "—"}</div>
+                    <div><b>Thickness:</b> {s.thickness ?? "—"} mm</div>
+                    <div><b>Width:</b> {s.width ?? "—"} mm</div>
+                    <div><b>Supplier:</b> {s.supplier || "—"}</div>
+                    <div><b>Purchased On:</b> {s.purchase_date || "—"}</div>
                     <div>
                       <b>Purchase Price:</b>{" "}
                       {s.purchase_price == null
                         ? "—"
-                        : Number(s.purchase_price).toFixed(2)}{" "}
-                      ₹/kg
+                        : Number(s.purchase_price).toFixed(2)} ₹/kg
                     </div>
-                    <div>
-                      <b>Last Sale Date:</b> {fmtDate(s.last_sale_at)}
-                    </div>
+                    <div><b>Last Sale Date:</b> {fmtDate(s.last_sale_at)}</div>
                   </div>
                   <button
                     className="mt-3 px-3 py-2 border rounded"
@@ -1117,9 +1174,7 @@ function Coils({ onStartedCircle }) {
                       className="border rounded-lg px-3 py-2 w-full"
                     >
                       {GRADES.map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
+                        <option key={g} value={g}>{g}</option>
                       ))}
                     </select>
                   </label>
@@ -1193,6 +1248,7 @@ function Coils({ onStartedCircle }) {
               )}
             </div>
 
+            {/* Quantities */}
             <div className="bg-slate-50 rounded-lg p-3">
               <div className="font-semibold mb-2">Quantities (kg)</div>
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -1205,6 +1261,7 @@ function Coils({ onStartedCircle }) {
               </div>
             </div>
 
+            {/* Start Circle Run */}
             <div className="bg-slate-50 rounded-lg p-3">
               <div className="font-semibold mb-2">
                 Start Circle Run (only Operator + Date)
@@ -1253,7 +1310,9 @@ function StatCell({ label, value, bold }) {
   return (
     <div className="bg-white rounded border p-2">
       <div className="text-[11px] text-slate-500">{label}</div>
-      <div className={`text-sm ${bold ? "font-semibold" : ""}`}>{fmt(value)}</div>
+      <div className={`text-sm ${bold ? "font-semibold" : ""}`}>
+        {fmt(value)}
+      </div>
     </div>
   );
 }

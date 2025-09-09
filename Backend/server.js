@@ -7,6 +7,10 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { query } from "./db.js";
+import multer from "multer";
+import xlsx from "xlsx";
+
+const upload = multer({ dest: "uploads/" })
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1130,6 +1134,113 @@ if (rn) {
   }
 });
 
+// Helper: Parse Excel/Indian style dates safely
+function parseDate(value) {
+  if (!value) return null;
+
+  // Case 1: Already a JS Date
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10); // yyyy-mm-dd
+  }
+
+  // Case 2: Excel serial number (e.g., 45678)
+  if (typeof value === "number") {
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000)); 
+    return date.toISOString().slice(0, 10);
+  }
+
+  // Case 3: String like "13-08-2025"
+  if (typeof value === "string" && /^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    const [day, month, year] = value.split("-");
+    return `${year}-${month}-${day}`; // convert to yyyy-mm-dd
+  }
+
+  // Fallback: try normal Date parsing
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
+}
+
+// Bulk Import Coils from Excel
+app.post("/api/coils/import", auth("admin"), upload.single("file"), (req, res) => {
+  try {
+    const workbook = xlsx.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+
+    const insert = db.prepare(`
+      INSERT INTO coils (rn, grade, thickness, width, supplier, purchase_date, purchase_weight_kg, purchase_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertStock = db.prepare(`
+      INSERT INTO coil_stock (coil_id, rn, grade, thickness, width, supplier, purchase_date, initial_weight_kg, available_weight_kg, purchase_price, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
+
+    let inserted = 0;
+    let skipped = 0;
+    let skippedRNs = [];
+
+    const insertMany = db.transaction((rows) => {
+      for (const r of rows) {
+        // Skip blank/invalid rows
+        if (!r["RN"] || !r["Purchase Weight (kg)"]) continue;
+
+        // Prevent duplicates (RN must be unique)
+        const existing = get(`SELECT id FROM coils WHERE rn = ?`, [r["RN"]]);
+        if (existing) {
+          skipped++;
+          skippedRNs.push(r["RN"]);
+          continue;
+        }
+
+        const purchaseDate = parseDate(r["Purchase Date"]);
+
+        const info = insert.run(
+          r["RN"],
+          r["Grade"],
+          r["Thickness (mm)"],
+          r["Width (mm)"],
+          r["Supplier"],
+          purchaseDate,
+          r["Purchase Weight (kg)"],
+          r["Purchase Price (₹/kg)"] || 0
+        );
+
+        insertStock.run(
+          info.lastInsertRowid,
+          r["RN"],
+          r["Grade"],
+          r["Thickness (mm)"],
+          r["Width (mm)"],
+          r["Supplier"],
+          purchaseDate,
+          r["Purchase Weight (kg)"],
+          r["Purchase Weight (kg)"],
+          r["Purchase Price (₹/kg)"] || 0
+        );
+
+        inserted++;
+      }
+    });
+
+    insertMany(rows);
+
+    // cleanup uploaded file
+    fs.unlinkSync(req.file.path);
+
+    res.json({
+      message: "✅ Coil import completed",
+      inserted,
+      skipped,
+      skippedRNs,
+      total: rows.length
+    });
+  } catch (err) {
+    console.error("❌ Import error:", err.message);
+    res.status(500).json({ error: "Failed to import coils" });
+  }
+});
 
 // List coils
 app.get('/api/coils', auth(), (req, res) => {
