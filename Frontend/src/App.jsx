@@ -4866,50 +4866,46 @@ function PlanningTab() {
         />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th className="px-3 py-3">Grade</th>
-              <th className="px-3 py-3">Thickness (mm)</th>
-              <th className="text-right px-3 py-3">Ordered Kg</th>
-              <th className="text-right px-3 py-3">Fulfilled Kg</th>
-              <th className="text-right px-3 py-3">Circle Stock</th>
-              <th className="text-right px-3 py-3">Coil Stock (Usable)</th>
-              <th className="text-right px-3 py-3">Remaining Order Kg</th>
-              <th className="text-right px-3 py-3">Coil Kg Required</th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t">
-                <td className="px-3 py-3">{r.grade}</td>
-                <td className="px-3 py-3">{r.thickness}</td>
-                <td className="px-3 py-3 text-right">{fmt(r.ordered)}</td>
-                <td className="px-3 py-3 text-right">{fmt(r.fulfilled)}</td>
-                <td className="px-3 py-3 text-right">{fmt(r.circle)}</td>
-                <td className="px-3 py-3 text-right">{fmt(r.coilUsable)}</td>
-                <td className="px-3 py-3 text-right">{fmt(r.netRemaining)}</td>
-                <td className="px-3 py-3 text-right font-semibold text-sky-700">
-                  {r.coilRequired > 0
-                    ? Number(r.coilRequired).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })
-                    : "—"}
-                </td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={8} className="py-4 text-center text-slate-500">
-                  No planning data.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <StickyTable
+  headers={[
+    { label: "Grade", className: "px-3 py-3 w-28" },
+    { label: "Thickness (mm)", className: "px-3 py-3 w-36" },
+    { label: "Ordered Kg", className: "text-right px-3 py-3 w-36" },
+    { label: "Fulfilled Kg", className: "text-right px-3 py-3 w-36" },
+    { label: "Circle Stock", className: "text-right px-3 py-3 w-36" },
+    { label: "Coil Stock (Usable)", className: "text-right px-3 py-3 w-44" },
+    { label: "Remaining Order Kg", className: "text-right px-3 py-3 w-44" },
+    { label: "Coil Kg Required", className: "text-right px-3 py-3 w-44" },
+  ]}
+>
+  {rows.map((r, i) => (
+    <tr key={i} className="border-t">
+      <td className="px-3 py-3">{r.grade}</td>
+      <td className="px-3 py-3">{r.thickness}</td>
+      <td className="px-3 py-3 text-right">{fmt(r.ordered)}</td>
+      <td className="px-3 py-3 text-right">{fmt(r.fulfilled)}</td>
+      <td className="px-3 py-3 text-right">{fmt(r.circle)}</td>
+      <td className="px-3 py-3 text-right">{fmt(r.coilUsable)}</td>
+      <td className="px-3 py-3 text-right">{fmt(r.netRemaining)}</td>
+      <td className="px-3 py-3 text-right font-semibold text-sky-700">
+        {r.coilRequired > 0
+          ? Number(r.coilRequired).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          : "—"}
+      </td>
+    </tr>
+  ))}
+
+  {!rows.length && (
+    <tr>
+      <td colSpan={8} className="py-4 text-center text-slate-500">
+        No planning data.
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
