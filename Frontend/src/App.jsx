@@ -962,10 +962,10 @@ function Coils({ onStartedCircle }) {
 <div className="relative">
   <button
     onClick={() => setShowStartForm(!showStartForm)}
-    className="bg-indigo-600 text-white px-3 py-2 rounded-lg disabled:opacity-50 w-[180px] h-[42px]"
+    className="bg-indigo-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
     disabled={!selectedIds.length}
   >
-    Start Selected in Circle
+    Go to Circle
   </button>
 
   {showStartForm && (
@@ -1383,7 +1383,7 @@ function Coils({ onStartedCircle }) {
                 </div>
               </form>
               <div className="text-xs text-slate-500 mt-2">
-                For multiple coils, select rows above and click <b>Start Selected in Circle</b>.
+                For multiple coils, select rows above and click <b>Go to Circle</b>.
               </div>
             </div>
           </div>
