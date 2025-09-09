@@ -2610,44 +2610,45 @@ function ScrapTab() {
     reloadAll();
   }, []);
 
-// === Global Scrap Sale Submit ===
-async function submitGlobalScrapSale(e) {
-  e.preventDefault();
-  const weight_kg = Number(scrapWeight || 0);
-  if (!weight_kg || weight_kg <= 0) {
-    alert("Enter a valid scrap weight (> 0).");
-    return;
-  }
-  try {
-    setScrapSaving(true);
-    const res = await axios.post(`${API}/scrap-sales/record-bulk`, {   // 👈 changed endpoint
-      sale_date: scrapSaleDate,
-      buyer: scrapBuyer || null,
-      grade: scrapGrade || null,
-      weight_kg,
-      price_per_kg: scrapPrice === "" ? null : Number(scrapPrice),
-    });
-
-    // (optional) show allocations
-    if (res.data?.allocations?.length) {
-      alert("Allocated:\n" + res.data.allocations.map(a =>
-        `${a.weight_kg} kg from ${a.source_type} (RN=${a.rn})`
-      ).join("\n"));
+  // === Global Scrap Sale Submit ===
+  async function submitGlobalScrapSale(e) {
+    e.preventDefault();
+    const weight_kg = Number(scrapWeight || 0);
+    if (!weight_kg || weight_kg <= 0) {
+      alert("Enter a valid scrap weight (> 0).");
+      return;
     }
+    try {
+      setScrapSaving(true);
+      const res = await axios.post(`${API}/scrap-sales/record-bulk`, {
+        sale_date: scrapSaleDate,
+        buyer: scrapBuyer || null,
+        grade: scrapGrade || null,
+        weight_kg,
+        price_per_kg: scrapPrice === "" ? null : Number(scrapPrice),
+      });
 
-    // reset form
-    setScrapBuyer("");
-    setScrapGrade("");
-    setScrapWeight("");
-    setScrapPrice("");
-    await reloadAll();
-  } catch (err) {
-    console.error("Failed to record scrap sale", err);
-    alert(err?.response?.data?.error || "Failed to record scrap sale");
-  } finally {
-    setScrapSaving(false);
+      if (res.data?.allocations?.length) {
+        alert(
+          "Allocated:\n" +
+            res.data.allocations
+              .map((a) => `${a.weight_kg} kg from ${a.source_type} (RN=${a.rn})`)
+              .join("\n")
+        );
+      }
+
+      setScrapBuyer("");
+      setScrapGrade("");
+      setScrapWeight("");
+      setScrapPrice("");
+      await reloadAll();
+    } catch (err) {
+      console.error("Failed to record scrap sale", err);
+      alert(err?.response?.data?.error || "Failed to record scrap sale");
+    } finally {
+      setScrapSaving(false);
+    }
   }
-}
 
   const undoScrapSale = async (id) => {
     if (!confirm("Undo this scrap sale?")) return;
@@ -2668,7 +2669,10 @@ async function submitGlobalScrapSale(e) {
       right={<ExportSheetButton tab="scrap_sales" />}
     >
       {/* Global scrap sale form */}
-      <form onSubmit={submitGlobalScrapSale} className="mb-3 flex flex-wrap items-end gap-2">
+      <form
+        onSubmit={submitGlobalScrapSale}
+        className="mb-3 flex flex-wrap items-end gap-2"
+      >
         <label className="text-sm">
           <div className="text-slate-600 mb-1">Sale Date</div>
           <input
@@ -2732,111 +2736,110 @@ async function submitGlobalScrapSale(e) {
         </button>
       </form>
 
-      {/* Scrap stock table (read-only now) */}
-<StickyTable
-  headers={[
-    { label: "Date", className: "w-32" },
-    { label: "Source RN", className: "w-32" },
-    { label: "Source Type", className: "w-32" },
-    { label: "Grade", className: "w-28" },
-    { label: "Remaining (kg)", className: "text-right w-40" },
-  ]}
->
-  {visibleRows.map((r, i) => {
-    const key = r.id ?? `${r.rn ?? "rn"}-${i}`;
-    const rem = getRemaining(r);
-    return (
-      <tr key={key} className="border-t">
-        <td>{r.date ?? "—"}</td>
-        <td>{r.rn ?? "—"}</td>
-        <td className="capitalize">{r.source_type ?? "—"}</td>
-        <td>{r.grade ?? "—"}</td>
-        <td className="text-right">{fmt(rem)}</td>
-      </tr>
-    );
-  })}
+      {/* Scrap stock table */}
+      <StickyTable
+        headers={[
+          { label: "Date", className: "w-32" },
+          { label: "Source RN", className: "w-32" },
+          { label: "Source Type", className: "w-32" },
+          { label: "Grade", className: "w-28" },
+          { label: "Remaining (kg)", className: "text-right w-40" },
+        ]}
+      >
+        {visibleRows.map((r, i) => {
+          const key = r.id ?? `${r.rn ?? "rn"}-${i}`;
+          const rem = getRemaining(r);
+          return (
+            <tr key={key} className="border-t">
+              <td>{r.date ?? "—"}</td>
+              <td>{r.rn ?? "—"}</td>
+              <td className="capitalize">{r.source_type ?? "—"}</td>
+              <td>{r.grade ?? "—"}</td>
+              <td className="text-right">{fmt(rem)}</td>
+            </tr>
+          );
+        })}
 
-  {!visibleRows.length && (
-    <tr>
-      <td className="py-4 text-slate-500 text-center" colSpan={5}>
-        All cleared 🎉 (no scrap with balance &gt; 0)
-      </td>
-    </tr>
-  )}
+        {!visibleRows.length && (
+          <tr>
+            <td className="py-4 text-slate-500 text-center" colSpan={5}>
+              All cleared 🎉 (no scrap with balance &gt; 0)
+            </td>
+          </tr>
+        )}
 
-  {/* Totals */}
-  <tr className="border-t bg-yellow-50 font-semibold">
-    <td colSpan={4} className="text-right px-2 py-2">
-      Total Scrap (kg)
-    </td>
-    <td className="text-right px-2 py-2">{fmt(totals.total_kg ?? 0)}</td>
-  </tr>
-  <tr className="border-t bg-yellow-50">
-    <td colSpan={4} className="text-right px-2 py-2">
-      Scrap Sold (kg)
-    </td>
-    <td className="text-right px-2 py-2">{fmt(totals.sold_kg ?? 0)}</td>
-  </tr>
-  <tr className="border-t bg-emerald-50">
-    <td colSpan={4} className="text-right px-2 py-2 font-semibold">
-      Available Scrap (kg)
-    </td>
-    <td className="text-right px-2 py-2 font-semibold">
-      {fmt(totals.available_kg ?? 0)}
-    </td>
-  </tr>
-</StickyTable>
-      </Section>
+        {/* Totals */}
+        <tr className="border-t bg-yellow-50 font-semibold">
+          <td colSpan={4} className="text-right px-2 py-2">
+            Total Scrap (kg)
+          </td>
+          <td className="text-right px-2 py-2">{fmt(totals.total_kg ?? 0)}</td>
+        </tr>
+        <tr className="border-t bg-yellow-50">
+          <td colSpan={4} className="text-right px-2 py-2">
+            Scrap Sold (kg)
+          </td>
+          <td className="text-right px-2 py-2">{fmt(totals.sold_kg ?? 0)}</td>
+        </tr>
+        <tr className="border-t bg-emerald-50">
+          <td colSpan={4} className="text-right px-2 py-2 font-semibold">
+            Available Scrap (kg)
+          </td>
+          <td className="text-right px-2 py-2 font-semibold">
+            {fmt(totals.available_kg ?? 0)}
+          </td>
+        </tr>
+      </StickyTable>
 
       {/* Scrap Sales History */}
-<div className="mt-6">
-  <h3 className="font-semibold mb-2">Recent Scrap Sales</h3>
-  <StickyTable
-    headers={[
-      { label: "Sale Date", className: "w-32" },
-      { label: "Buyer", className: "w-40" },
-      { label: "Grade", className: "w-28" },
-      { label: "RN", className: "w-32" },
-      { label: "Weight (kg)", className: "text-right w-40" },
-      { label: "Price/kg", className: "text-right w-32" },
-      { label: "Total Value", className: "text-right w-40" },
-      { label: "", className: "w-20" },
-    ]}
-  >
-    {sales.map((s) => (
-      <tr key={s.id} className="border-t">
-        <td>{s.sale_date ?? "—"}</td>
-        <td>{s.buyer ?? "—"}</td>
-        <td>{s.grade ?? "—"}</td>
-        <td>{s.rn ?? "—"}</td>
-        <td className="text-right">{fmt(Number(s.weight_kg ?? 0))}</td>
-        <td className="text-right">
-          {s.price_per_kg != null ? fmt(Number(s.price_per_kg)) : "—"}
-        </td>
-        <td className="text-right">
-          {s.price_per_kg != null
-            ? fmt(Number(s.price_per_kg) * Number(s.weight_kg ?? 0))
-            : "—"}
-        </td>
-        <td className="flex gap-2">
-          <button
-            onClick={() => undoScrapSale(s.id)}
-            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-          >
-            Undo
-          </button>
-        </td>
-      </tr>
-    ))}
-    {!sales.length && (
-      <tr>
-        <td className="py-4 text-slate-500 text-center" colSpan={8}>
-          No scrap sales recorded.
-        </td>
-      </tr>
-    )}
-  </StickyTable>
-</div>
+      <div className="mt-6">
+        <h3 className="font-semibold mb-2">Recent Scrap Sales</h3>
+        <StickyTable
+          headers={[
+            { label: "Sale Date", className: "w-32" },
+            { label: "Buyer", className: "w-40" },
+            { label: "Grade", className: "w-28" },
+            { label: "RN", className: "w-32" },
+            { label: "Weight (kg)", className: "text-right w-40" },
+            { label: "Price/kg", className: "text-right w-32" },
+            { label: "Total Value", className: "text-right w-40" },
+            { label: "", className: "w-20" },
+          ]}
+        >
+          {sales.map((s) => (
+            <tr key={s.id} className="border-t">
+              <td>{s.sale_date ?? "—"}</td>
+              <td>{s.buyer ?? "—"}</td>
+              <td>{s.grade ?? "—"}</td>
+              <td>{s.rn ?? "—"}</td>
+              <td className="text-right">{fmt(Number(s.weight_kg ?? 0))}</td>
+              <td className="text-right">
+                {s.price_per_kg != null ? fmt(Number(s.price_per_kg)) : "—"}
+              </td>
+              <td className="text-right">
+                {s.price_per_kg != null
+                  ? fmt(Number(s.price_per_kg) * Number(s.weight_kg ?? 0))
+                  : "—"}
+              </td>
+              <td className="flex gap-2">
+                <button
+                  onClick={() => undoScrapSale(s.id)}
+                  className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                >
+                  Undo
+                </button>
+              </td>
+            </tr>
+          ))}
+          {!sales.length && (
+            <tr>
+              <td className="py-4 text-slate-500 text-center" colSpan={8}>
+                No scrap sales recorded.
+              </td>
+            </tr>
+          )}
+        </StickyTable>
+      </div>
     </Section>
   );
 }
