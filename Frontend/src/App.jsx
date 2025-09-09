@@ -3853,58 +3853,53 @@ function PLSalesTab() {
 
   return (
     <Section title="PL Sales" right={<ExportSheetButton tab="pl_sales" />} >
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600">
-            <tr>
-              <th>Sale Date</th>
-              <th>Source</th>
-              <th>Grade</th>
-              <th className="text-right">Thickness (mm)</th>
-              <th className="border-l border-slate-200 pl-4">Size (mm)</th>
-              <th>Buyer</th>
-              <th className="text-right">Weight (kg)</th>
-              <th className="text-right">Price/kg</th>
-              <th className="text-right">Total Value</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
-            {sales.map((s) => (
-              <tr key={s.id} className="border-t">
-                <td>{s.sale_date}</td>
-                <td>{s.source_ref}</td>
-                <td>{s.grade || "—"}</td>
-                <td className="text-right">{s.thickness_mm ?? s.thickness ?? "—"}</td>
-                <td className="border-l border-slate-200 pl-4">{s.size_mm ?? "—"}</td>
-                <td>{s.buyer || "—"}</td>
-                <td className="text-right">{fmt(s.sold_weight_kg)}</td>
-                <td className="text-right">
-                  {s.price_per_kg != null ? fmt(s.price_per_kg) : "—"}
-                </td>
-                <td className="text-right">
-                  {s.price_per_kg != null ? fmt(s.price_per_kg * s.sold_weight_kg) : "—"}
-                </td>
-                <td>
-                  <button
-                    onClick={() => deleteSale(s.id)}
-                    className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                  >
-                    Undo
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!sales.length && (
-              <tr>
-                <td className="py-4 text-slate-500" colSpan={10}>
-                  No PL sales recorded.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <StickyTable
+  headers={[
+    { label: "Sale Date", className: "w-32" },
+    { label: "Source", className: "w-36" },
+    { label: "Grade", className: "w-24" },
+    { label: "Thickness (mm)", className: "text-right w-36" },
+    { label: "Size (mm)", className: "pl-4 border-l border-slate-200 w-40" },
+    { label: "Buyer", className: "w-40" },
+    { label: "Weight (kg)", className: "text-right w-40" },
+    { label: "Price/kg", className: "text-right w-32" },
+    { label: "Total Value", className: "text-right w-40" },
+    { label: "", className: "w-20" },
+  ]}
+>
+  {sales.map((s) => (
+    <tr key={s.id} className="border-t">
+      <td>{s.sale_date}</td>
+      <td>{s.source_ref}</td>
+      <td>{s.grade || "—"}</td>
+      <td className="text-right">{s.thickness_mm ?? s.thickness ?? "—"}</td>
+      <td className="pl-4 border-l border-slate-200">{s.size_mm ?? "—"}</td>
+      <td>{s.buyer || "—"}</td>
+      <td className="text-right">{fmt(s.sold_weight_kg)}</td>
+      <td className="text-right">
+        {s.price_per_kg != null ? fmt(s.price_per_kg) : "—"}
+      </td>
+      <td className="text-right">
+        {s.price_per_kg != null ? fmt(s.price_per_kg * s.sold_weight_kg) : "—"}
+      </td>
+      <td>
+        <button
+          onClick={() => deleteSale(s.id)}
+          className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+        >
+          Undo
+        </button>
+      </td>
+    </tr>
+  ))}
+  {!sales.length && (
+    <tr>
+      <td className="py-4 text-slate-500 text-center" colSpan={10}>
+        No PL sales recorded.
+      </td>
+    </tr>
+  )}
+</StickyTable>
     </Section>
   );
 }
