@@ -1186,39 +1186,41 @@ app.post("/api/coils/import", auth("admin"), upload.single("file"), (req, res) =
         // Skip blank/invalid rows
         if (!r["RN"] || !r["Purchase Weight (kg)"]) continue;
 
-        // Prevent duplicates (RN must be unique)
-        const existing = get(`SELECT id FROM coils WHERE rn = ?`, [r["RN"]]);
-        if (existing) {
-          skipped++;
-          skippedRNs.push(r["RN"]);
-          continue;
-        }
+const rnVal = String(r["RN"]).trim();
 
-        const purchaseDate = parseDate(r["Purchase Date"]);
+// Prevent duplicates (RN must be unique)
+const existing = get(`SELECT id FROM coils WHERE rn = ?`, [rnVal]);
+if (existing) {
+  skipped++;
+  skippedRNs.push(rnVal);
+  continue;
+}
 
-        const info = insert.run(
-          r["RN"],
-          r["Grade"],
-          r["Thickness (mm)"],
-          r["Width (mm)"],
-          r["Supplier"],
-          purchaseDate,
-          r["Purchase Weight (kg)"],
-          r["Purchase Price (₹/kg)"] || 0
-        );
+const purchaseDate = parseDate(r["Purchase Date"]);
 
-        insertStock.run(
-          info.lastInsertRowid,
-          r["RN"],
-          r["Grade"],
-          r["Thickness (mm)"],
-          r["Width (mm)"],
-          r["Supplier"],
-          purchaseDate,
-          r["Purchase Weight (kg)"],
-          r["Purchase Weight (kg)"],
-          r["Purchase Price (₹/kg)"] || 0
-        );
+const info = insert.run(
+  rnVal,
+  r["Grade"],
+  r["Thickness (mm)"],
+  r["Width (mm)"],
+  r["Supplier"],
+  purchaseDate,
+  r["Purchase Weight (kg)"],
+  r["Purchase Price (₹/kg)"] || 0
+);
+
+insertStock.run(
+  info.lastInsertRowid,
+  rnVal,
+  r["Grade"],
+  r["Thickness (mm)"],
+  r["Width (mm)"],
+  r["Supplier"],
+  purchaseDate,
+  r["Purchase Weight (kg)"],
+  r["Purchase Weight (kg)"],
+  r["Purchase Price (₹/kg)"] || 0
+);
 
         inserted++;
       }

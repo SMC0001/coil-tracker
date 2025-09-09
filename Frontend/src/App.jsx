@@ -1069,7 +1069,7 @@ function Coils({ onStartedCircle }) {
             <tbody className="[&>tr:nth-child(odd)]:bg-slate-50">
               {list.map((row) => (
                 <tr key={row.id} className="border-t">
-                  <td className="py-2 font-medium">{row.rn}</td>
+                  <td className="py-2 font-medium">{String(row.rn)}</td>
                   <td>{row.grade || "—"}</td>
                   <td>
                     {[
