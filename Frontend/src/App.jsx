@@ -720,6 +720,16 @@ function Coils({ onStartedCircle }) {
   const [importResult, setImportResult] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
 
+  // NEW: bulk start controls reuse the same operator/date inputs
+  const [startRun, setStartRun] = useState({
+    operator: OPERATORS[0],
+    run_date: "",
+  });
+
+  // NEW: ref for auto-scroll + flash when viewing a coil
+  const overviewRef = useRef(null);
+  const [flashOverview, setFlashOverview] = useState(false);
+
   const [newCoil, setNewCoil] = useState({
     rn: "",
     grade: "304",
@@ -729,11 +739,6 @@ function Coils({ onStartedCircle }) {
     purchase_weight_kg: "",
     purchase_date: "",
     purchase_price: "",
-  });
-
-  const [startRun, setStartRun] = useState({
-    operator: OPERATORS[0],
-    run_date: "",
   });
 
   const load = async () => {
@@ -751,6 +756,18 @@ function Coils({ onStartedCircle }) {
   useEffect(() => {
     load();
   }, [q, gradeFilter, operatorFilter]);
+
+  // Auto-scroll to overview whenever a new coil is selected
+  useEffect(() => {
+    if (selected?.summary && overviewRef.current) {
+      // Smoothly scroll into view
+      overviewRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Flash highlight briefly
+      setFlashOverview(true);
+      const t = setTimeout(() => setFlashOverview(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [selected?.summary?.id]);
 
   const loadSummary = async (id) =>
     setSelected({
@@ -810,6 +827,25 @@ function Coils({ onStartedCircle }) {
     }
   };
 
+  // Bulk start using new backend endpoint
+  const bulkStartCircle = async () => {
+    if (!selectedIds.length) return alert("Select at least one coil.");
+    try {
+      const { data } = await axios.post(`${API}/circle-runs/bulk-start`, {
+        coil_ids: selectedIds,
+        operator: startRun.operator,
+        run_date: startRun.run_date || undefined,
+      });
+      // Navigate to first created run if any, same as single
+      if (data.first_run_id) onStartedCircle(data.first_run_id);
+      alert(`Started: ${data.started}, Skipped: ${data.skipped}`);
+      setSelectedIds([]);
+    } catch (e) {
+      console.error(e);
+      alert("Bulk start failed");
+    }
+  };
+
   const deleteCoil = async (id) => {
     if (!confirm("Delete this coil? This will also delete all associated runs."))
       return;
@@ -822,24 +858,19 @@ function Coils({ onStartedCircle }) {
     }
   };
 
-// ✅ Bulk delete
-const bulkDelete = async () => {
-  if (!selectedIds.length) return alert("No coils selected.");
-  if (!confirm(`Delete ${selectedIds.length} coils? This cannot be undone.`))
-    return;
-  try {
-    const res = await axios.post(`${API}/coils/bulk-delete`, { ids: selectedIds });
-
-    // 🔥 Instead of reloading, update state directly
-    setList((prev) => prev.filter((row) => !selectedIds.includes(row.id)));
-    setSelectedIds([]);
-    setSelected(null);
-
-    console.log("Bulk deleted:", res.data.ids);
-  } catch {
-    alert("Error deleting selected coils");
-  }
-};
+  // Bulk delete (unchanged)
+  const bulkDelete = async () => {
+    if (!selectedIds.length) return alert("No coils selected.");
+    if (!confirm(`Delete ${selectedIds.length} coils? This cannot be undone.`))
+      return;
+    try {
+      await axios.post(`${API}/coils/bulk-delete`, { ids: selectedIds });
+      setSelected(null);
+      await load();
+    } catch {
+      alert("Error deleting selected coils");
+    }
+  };
 
   const toggleSelect = (id) => {
     setSelectedIds((prev) =>
@@ -898,7 +929,7 @@ const bulkDelete = async () => {
   const toNum = (v) =>
     v === "" || v === null || v === undefined ? null : Number(v);
 
-  // 📥 Import handler
+  // Import handler (unchanged)
   const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -941,6 +972,8 @@ const bulkDelete = async () => {
                 onChange={handleImport}
               />
             </label>
+
+            {/* Bulk actions */}
             <button
               onClick={bulkDelete}
               className="bg-red-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
@@ -948,6 +981,32 @@ const bulkDelete = async () => {
             >
               Delete Selected
             </button>
+
+            {/* Bulk start controls (operator + date + button) */}
+            <select
+              value={startRun.operator}
+              onChange={(e) => setStartRun({ ...startRun, operator: e.target.value })}
+              className="border rounded-lg px-3 py-2"
+            >
+              {OPERATORS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+            <Input
+              type="date"
+              value={startRun.run_date}
+              onChange={(e) => setStartRun({ ...startRun, run_date: e.target.value })}
+              className="w-40"
+            />
+            <button
+              onClick={bulkStartCircle}
+              className="bg-indigo-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
+              disabled={!selectedIds.length}
+            >
+              Start Selected in Circle
+            </button>
+
+            {/* Search/filters (unchanged) */}
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -981,7 +1040,7 @@ const bulkDelete = async () => {
           </div>
         }
       >
-        {/* ✅ Import Result */}
+        {/* Import result message */}
         {importResult && (
           <div
             className={`p-2 mb-3 rounded ${
@@ -991,17 +1050,14 @@ const bulkDelete = async () => {
             }`}
           >
             {importResult.type === "success" ? (
-              <>
-                ✅ Imported: {importResult.data.inserted}, Skipped:{" "}
-                {importResult.data.skipped}
-              </>
+              <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
             ) : (
               <>❌ {importResult.error}</>
             )}
           </div>
         )}
 
-        {/* New coil form */}
+        {/* New coil form (unchanged) */}
         <form
           onSubmit={createCoil}
           className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
@@ -1020,9 +1076,7 @@ const bulkDelete = async () => {
               className="border rounded-lg px-3 py-2"
             >
               {GRADES.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
+                <option key={g} value={g}>{g}</option>
               ))}
             </select>
           </label>
@@ -1114,10 +1168,7 @@ const bulkDelete = async () => {
                   <td className="py-2 font-medium">{String(row.rn)}</td>
                   <td>{row.grade || "—"}</td>
                   <td>
-                    {[
-                      row.thickness ? `${row.thickness}mm` : null,
-                      row.width ? `${row.width}mm` : null,
-                    ]
+                    {[row.thickness ? `${row.thickness}mm` : null, row.width ? `${row.width}mm` : null]
                       .filter(Boolean)
                       .join(" × ") || "—"}
                   </td>
@@ -1125,18 +1176,14 @@ const bulkDelete = async () => {
                   <td>{row.purchase_date || "—"}</td>
                   <td className="text-right">{fmt(row.purchased_kg)}</td>
                   <td className="text-right">
-                    {row.purchase_price == null
-                      ? "—"
-                      : Number(row.purchase_price).toFixed(2)}
+                    {row.purchase_price == null ? "—" : Number(row.purchase_price).toFixed(2)}
                   </td>
                   <td className="text-right">{fmt(row.direct_sold_kg)}</td>
                   <td className="text-right">{fmt(row.circles_kg)}</td>
                   <td className="text-right">{fmt(row.patta_kg)}</td>
                   <td className="text-right">{fmt(row.pl_kg)}</td>
                   <td className="text-right">{fmt(row.scrap_kg)}</td>
-                  <td className="text-right font-semibold">
-                    {fmt(row.balance_kg)}
-                  </td>
+                  <td className="text-right font-semibold">{fmt(row.balance_kg)}</td>
                   <td className="text-right">
                     <div className="flex gap-1">
                       <button
@@ -1169,8 +1216,11 @@ const bulkDelete = async () => {
 
       {/* Overview + Start Circle Run + Edit Coil */}
       {s && (
-        <Section title={`RN ${s.rn} — Overview`}>
-          <div className="grid md:grid-cols-3 gap-3">
+        <Section
+          ref={overviewRef}
+          title={`RN ${s.rn} — Overview`}
+        >
+          <div className={`grid md:grid-cols-3 gap-3 ${flashOverview ? "ring-2 ring-indigo-400 rounded-lg" : ""}`}>
             {/* Specs */}
             <div className="bg-slate-50 rounded-lg p-3">
               <div className="font-semibold mb-2">Specs</div>
@@ -1184,9 +1234,7 @@ const bulkDelete = async () => {
                     <div><b>Purchased On:</b> {s.purchase_date || "—"}</div>
                     <div>
                       <b>Purchase Price:</b>{" "}
-                      {s.purchase_price == null
-                        ? "—"
-                        : Number(s.purchase_price).toFixed(2)} ₹/kg
+                      {s.purchase_price == null ? "—" : Number(s.purchase_price).toFixed(2)} ₹/kg
                     </div>
                     <div><b>Last Sale Date:</b> {fmtDate(s.last_sale_at)}</div>
                   </div>
@@ -1303,7 +1351,7 @@ const bulkDelete = async () => {
               </div>
             </div>
 
-            {/* Start Circle Run */}
+            {/* Start Circle Run (single) */}
             <div className="bg-slate-50 rounded-lg p-3">
               <div className="font-semibold mb-2">
                 Start Circle Run (only Operator + Date)
@@ -1338,7 +1386,7 @@ const bulkDelete = async () => {
                 </div>
               </form>
               <div className="text-xs text-slate-500 mt-2">
-                Then fill all details directly in the <b>Circle</b> tab.
+                For multiple coils, select rows above and click <b>Start Selected in Circle</b>.
               </div>
             </div>
           </div>

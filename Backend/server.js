@@ -1600,6 +1600,59 @@ if (alreadyCut + newCut > coil.purchase_weight_kg) {
   res.json(get(`SELECT * FROM circle_runs WHERE id=?`, [info.lastInsertRowid]));
 });
 
+// Bulk start circle runs for multiple coils
+app.post('/api/circle-runs/bulk-start', auth(), (req, res) => {
+  try {
+    const { coil_ids, operator, run_date } = req.body || {};
+    if (!Array.isArray(coil_ids) || coil_ids.length === 0) {
+      return res.status(400).json({ error: 'coil_ids (array) is required' });
+    }
+    if (!operator) {
+      return res.status(400).json({ error: 'operator is required' });
+    }
+
+    const dateStr = (run_date && String(run_date).trim())
+      ? String(run_date).slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+    const checkExists = db.prepare(`
+      SELECT id FROM circle_runs
+      WHERE coil_id = ? AND date(run_date) = date(?)
+    `);
+
+    const insertRun = db.prepare(`
+      INSERT INTO circle_runs (coil_id, operator, run_date, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `);
+
+    const results = { started: 0, skipped: 0, created_ids: [], skipped_ids: [] };
+
+    const tx = db.transaction((ids) => {
+      for (const coilId of ids) {
+        const exists = checkExists.get(coilId, dateStr);
+        if (exists) {
+          results.skipped++;
+          results.skipped_ids.push(coilId);
+          continue;
+        }
+        const info = insertRun.run(coilId, operator, dateStr);
+        results.started++;
+        results.created_ids.push(info.lastInsertRowid);
+      }
+    });
+
+    tx(coil_ids);
+    res.json({
+      ok: true,
+      ...results,
+      first_run_id: results.created_ids[0] ?? null
+    });
+  } catch (e) {
+    console.error('Bulk start error:', e);
+    res.status(500).json({ error: 'Failed to bulk start circle runs' });
+  }
+});
+
 // List Circle runs (show coil's current grade; no cr.balance_kg)
 app.get('/api/circle-runs', auth(), (req, res) => {
   const { from, to, q, operator } = req.query;
