@@ -118,10 +118,7 @@ function OrdersTab() {
   const [cancelRemark, setCancelRemark] = useState("");
   const [showCancelPrompt, setShowCancelPrompt] = useState(null);
 
-  // ---- Import Excel (Orders) ----
-  const [showImport, setShowImport] = useState(false);
-  const [importFile, setImportFile] = useState(null);
-  const [importBusy, setImportBusy] = useState(false);
+  // Same pattern as Coils: keep only importResult and reuse handler style
   const [importResult, setImportResult] = useState(null);
 
   // Only show non-dispatched orders in "open" view
@@ -305,22 +302,31 @@ function OrdersTab() {
     }
   };
 
-  // ---- Import handler ----
-  const handleImport = async () => {
-    if (!importFile) return alert("Choose an Excel file (.xlsx)");
-    const fd = new FormData();
-    fd.append("file", importFile);
-    setImportBusy(true);
+  // === Import handler (EXACT same as Coils, but endpoint /orders/import) ===
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
     try {
-      const res = await axios.post(`${API}/orders/import`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const token = localStorage.getItem("token");
+      const res = await axios.post(`${API}/orders/import`, formData, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "multipart/form-data",
+        },
       });
-      setImportResult(res.data);
+      setImportResult({ type: "success", data: res.data });
       await load();
-    } catch (e) {
-      setImportResult(e?.response?.data || { ok: false, error: e.message });
+    } catch (err) {
+      console.error("❌ Import failed", err);
+      setImportResult({
+        type: "error",
+        error: err.response?.data?.error || "Import failed",
+      });
     } finally {
-      setImportBusy(false);
+      // allow re-selecting the same file
+      e.target.value = "";
     }
   };
 
@@ -384,6 +390,7 @@ function OrdersTab() {
               </button>
             </div>
 
+            {/* Search / filters */}
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -421,26 +428,38 @@ function OrdersTab() {
               </select>
             </label>
 
-            {/* NEW: Import + Template */}
-            <button
-              type="button"
-              className="bg-slate-100 px-3 py-2 rounded"
-              onClick={() => { setShowImport(true); setImportResult(null); setImportFile(null); }}
-            >
-              Import Excel
-            </button>
-            <a
-              className="bg-slate-100 px-3 py-2 rounded"
-              href="/orders_import_template.xlsx"
-              download
-            >
-              Download Template
-            </a>
-
             <ExportSheetButton tab="orders" />
+
+            {/* EXACT same Import Excel control as Coils */}
+            <label className="bg-emerald-600 text-white px-3 py-2 rounded-lg cursor-pointer">
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImport}
+              />
+            </label>
           </div>
         }
       >
+        {/* Import result message (same pattern as Coils) */}
+        {importResult && (
+          <div
+            className={`p-2 mb-3 rounded ${
+              importResult.type === "success"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
+            {importResult.type === "success" ? (
+              <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
+            ) : (
+              <>❌ {importResult.error}</>
+            )}
+          </div>
+        )}
+
         {/* Create form */}
         <form
           onSubmit={createOrder}
@@ -578,68 +597,6 @@ function OrdersTab() {
           )}
         </StickyTable>
       </Section>
-
-      {/* Import Orders Modal */}
-      {showImport && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-5 rounded-xl w-[520px]">
-            <div className="text-lg font-semibold mb-2">Bulk Import — Orders</div>
-            <p className="text-sm mb-3">
-              Upload a <b>.xlsx</b> using the template. Accepted date formats:{" "}
-              <code>DD-MM-YYYY</code>, <code>MM/DD/YYYY</code>, or Excel date serial.
-            </p>
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-            />
-            <div className="mt-4 flex gap-2">
-              <button
-                className="bg-indigo-600 text-white px-3 py-2 rounded disabled:opacity-50"
-                disabled={importBusy}
-                onClick={handleImport}
-              >
-                {importBusy ? "Importing…" : "Import"}
-              </button>
-              <button
-                className="px-3 py-2 rounded border"
-                onClick={() => setShowImport(false)}
-              >
-                Close
-              </button>
-            </div>
-
-            {importResult && (
-              <div className="mt-4 text-sm">
-                {importResult.ok !== false ? (
-                  <div className="bg-green-50 border border-green-200 p-2 rounded">
-                    <div>Inserted: <b>{importResult.inserted}</b></div>
-                    <div>Skipped: <b>{importResult.skipped}</b></div>
-                    {Array.isArray(importResult.errors) && importResult.errors.length > 0 && (
-                      <details className="mt-2">
-                        <summary>Row issues</summary>
-                        <ul className="list-disc ml-5">
-                          {importResult.errors.map((e, i) => (
-                            <li key={i}>Line {e.line}: {e.issues.join(", ")}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
-                  </div>
-                ) : (
-                  <div className="bg-red-50 border border-red-200 p-2 rounded">
-                    <div className="font-medium">Import failed</div>
-                    <div>{importResult.error || "Unknown error"}</div>
-                    {importResult.missing && importResult.missing.length > 0 && (
-                      <div className="mt-1">Missing columns: {importResult.missing.join(", ")}</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Cancel popup */}
       {showCancelPrompt && (
