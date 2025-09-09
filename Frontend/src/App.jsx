@@ -694,6 +694,7 @@ function Coils({ onStartedCircle }) {
   const [editDraft, setEditDraft] = useState({});
   const [importResult, setImportResult] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showStartForm, setShowStartForm] = useState(false);
 
   // NEW: bulk start controls reuse the same operator/date inputs
   const [startRun, setStartRun] = useState({
@@ -948,38 +949,59 @@ function Coils({ onStartedCircle }) {
               />
             </label>
 
-            {/* Bulk actions */}
-            <button
-              onClick={bulkDelete}
-              className="bg-red-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
-              disabled={!selectedIds.length}
-            >
-              Delete Selected
-            </button>
+{/* Bulk actions */}
+<button
+  onClick={bulkDelete}
+  className="bg-red-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
+  disabled={!selectedIds.length}
+>
+  Delete Selected
+</button>
 
-            {/* Bulk start controls (operator + date + button) */}
-            <select
-              value={startRun.operator}
-              onChange={(e) => setStartRun({ ...startRun, operator: e.target.value })}
-              className="border rounded-lg px-3 py-2"
-            >
-              {OPERATORS.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-            <Input
-              type="date"
-              value={startRun.run_date}
-              onChange={(e) => setStartRun({ ...startRun, run_date: e.target.value })}
-              className="w-40"
-            />
-            <button
-              onClick={bulkStartCircle}
-              className="bg-indigo-600 text-white px-3 py-2 rounded-lg disabled:opacity-50"
-              disabled={!selectedIds.length}
-            >
-              Start Selected in Circle
-            </button>
+{/* Bulk start: cleaner UI */}
+<div className="relative">
+  <button
+    onClick={() => setShowStartForm(!showStartForm)}
+    className="bg-indigo-600 text-white px-3 py-2 rounded-lg disabled:opacity-50 w-[180px] h-[42px]"
+    disabled={!selectedIds.length}
+  >
+    Start Selected in Circle
+  </button>
+
+  {showStartForm && (
+    <div className="absolute mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-3 z-20 flex gap-2">
+      <label className="text-sm">
+        <div className="text-slate-600 mb-1">Operator</div>
+        <select
+          value={startRun.operator}
+          onChange={(e) => setStartRun({ ...startRun, operator: e.target.value })}
+          className="border rounded-lg px-3 py-2"
+        >
+          {OPERATORS.map((o) => (
+            <option key={o}>{o}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="text-sm">
+        <div className="text-slate-600 mb-1">Date</div>
+        <input
+          type="date"
+          value={startRun.run_date}
+          onChange={(e) => setStartRun({ ...startRun, run_date: e.target.value })}
+          className="border rounded-lg px-3 py-2"
+        />
+      </label>
+
+      <button
+        onClick={bulkStartCircle}
+        className="bg-emerald-600 text-white px-3 py-2 rounded-lg self-end"
+      >
+        Confirm Start
+      </button>
+    </div>
+  )}
+</div>
 
             {/* Search/filters (unchanged) */}
             <input
