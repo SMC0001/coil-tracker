@@ -1407,13 +1407,14 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
     if (!rows.length) return res.status(400).json({ error: "No rows found in worksheet" });
 
     const insertRun = db.prepare(`
-      INSERT INTO circle_runs (
-        coil_id, grade, thickness, run_date, operator,
-        net_weight_kg, op_size_mm, circle_weight_kg, qty,
-        scrap_weight_kg, patta_size, patta_weight_kg,
-        pl_size, pl_weight_kg, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `);
+  INSERT INTO circle_runs (
+    coil_id, grade, thickness, run_date, operator,
+    net_weight_kg, op_size_mm, circle_weight_kg, qty,
+    scrap_weight_kg, patta_size, patta_weight_kg,
+    pl_size, pl_weight_kg,
+    created_at, updated_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+`);
 
     let inserted = 0;
     let skipped = 0;
