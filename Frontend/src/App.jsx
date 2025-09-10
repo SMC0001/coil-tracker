@@ -530,62 +530,173 @@ function OrdersTab() {
             const isEdit = editingId === o.order_no && view !== "cancelled";
             return (
               <tr key={o.order_no} className="border-t">
-                <td>{o.order_no}</td>
-                <td>{o.order_date || "—"}</td>
-                <td>{o.order_by || "—"}</td>
-                <td>{o.company || "—"}</td>
-                <td>{o.grade || "—"}</td>
-                <td>{o.thickness_mm ?? "—"}</td>
-                <td>{o.op_size_mm ?? "—"}</td>
-                <td className="text-right">{fmt(o.ordered_qty_pcs)}</td>
-                <td className="text-right">{fmt(o.ordered_weight_kg)}</td>
-                <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
-                <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
-                <td className="pl-3">{o.cancelled_at || "—"}</td>
-                <td className="pl-3">{o.cancel_remarks || "—"}</td>
-                <td className="pl-3 border-l border-slate-200">
-                  {renderStatus(o.status, o.cancelled_at)}
-                </td>
-                <td className="whitespace-nowrap pl-4">
-                  {view === "cancelled" ? (
-                    <>
-                      <button
-                        className="px-2 py-1 rounded border"
-                        onClick={() => uncancelOrder(o.order_no)}
-                      >
-                        Uncancel
-                      </button>
-                      <button
-                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                        onClick={() => deleteOrder(o.order_no)}
-                      >
-                        Del
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        className="px-2 py-1 rounded border"
-                        onClick={() => startEdit(o)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="px-2 py-1 rounded border border-rose-300 text-rose-600"
-                        onClick={() => cancelOrder(o.order_no)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                        onClick={() => deleteOrder(o.order_no)}
-                      >
-                        Del
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
+  <td>{o.order_no}</td>
+
+  {/* Order Date */}
+  <td>
+    {isEdit ? (
+      <input
+        type="date"
+        className="border rounded px-2 py-1"
+        value={draft.order_date}
+        onChange={(e) => setDraft({ ...draft, order_date: e.target.value })}
+      />
+    ) : (
+      o.order_date || "—"
+    )}
+  </td>
+
+  {/* Order By */}
+  <td>
+    {isEdit ? (
+      <input
+        className="border rounded px-2 py-1"
+        value={draft.order_by}
+        onChange={(e) => setDraft({ ...draft, order_by: e.target.value })}
+      />
+    ) : (
+      o.order_by || "—"
+    )}
+  </td>
+
+  {/* Company */}
+  <td>
+    {isEdit ? (
+      <input
+        className="border rounded px-2 py-1"
+        value={draft.company}
+        onChange={(e) => setDraft({ ...draft, company: e.target.value })}
+      />
+    ) : (
+      o.company || "—"
+    )}
+  </td>
+
+  {/* Grade */}
+  <td>
+    {isEdit ? (
+      <input
+        className="border rounded px-2 py-1"
+        value={draft.grade}
+        onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
+      />
+    ) : (
+      o.grade || "—"
+    )}
+  </td>
+
+  {/* Thickness */}
+  <td>
+    {isEdit ? (
+      <input
+        type="number"
+        className="border rounded px-2 py-1 w-20"
+        value={draft.thickness}
+        onChange={(e) => setDraft({ ...draft, thickness: e.target.value })}
+      />
+    ) : (
+      o.thickness_mm ?? "—"
+    )}
+  </td>
+
+  {/* Op. Size */}
+  <td>
+    {isEdit ? (
+      <input
+        type="number"
+        className="border rounded px-2 py-1 w-20"
+        value={draft.op_size_mm}
+        onChange={(e) => setDraft({ ...draft, op_size_mm: e.target.value })}
+      />
+    ) : (
+      o.op_size_mm ?? "—"
+    )}
+  </td>
+
+  {/* Ordered Pcs */}
+  <td className="text-right">
+    {isEdit ? (
+      <input
+        type="number"
+        className="border rounded px-2 py-1 w-24 text-right"
+        value={draft.ordered_qty}
+        onChange={(e) => setDraft({ ...draft, ordered_qty: e.target.value })}
+      />
+    ) : (
+      fmt(o.ordered_qty_pcs)
+    )}
+  </td>
+
+  {/* Ordered Weight */}
+  <td className="text-right">
+    {isEdit ? (
+      <input
+        type="number"
+        className="border rounded px-2 py-1 w-24 text-right"
+        value={draft.ordered_weight_kg}
+        onChange={(e) =>
+          setDraft({ ...draft, ordered_weight_kg: e.target.value })
+        }
+      />
+    ) : (
+      fmt(o.ordered_weight_kg)
+    )}
+  </td>
+
+  {/* Fulfilled / Remaining */}
+  <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
+  <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
+
+  {/* Cancelled On */}
+  <td className="pl-3">{o.cancelled_at || "—"}</td>
+  <td className="pl-3">{o.cancel_remarks || "—"}</td>
+
+  {/* Status */}
+  <td className="pl-3 border-l border-slate-200">
+    {renderStatus(o.status, o.cancelled_at)}
+  </td>
+
+  {/* Actions */}
+  <td className="whitespace-nowrap pl-4">
+    {isEdit ? (
+      <>
+        <button
+          className="px-2 py-1 rounded bg-emerald-600 text-white"
+          onClick={() => saveEdit(o.order_no)}
+        >
+          Save
+        </button>
+        <button
+          className="px-2 py-1 rounded border ml-2"
+          onClick={cancelEdit}
+        >
+          Cancel
+        </button>
+      </>
+    ) : (
+      <>
+        <button
+          className="px-2 py-1 rounded border"
+          onClick={() => startEdit(o)}
+        >
+          Edit
+        </button>
+        <button
+          className="px-2 py-1 rounded border border-rose-300 text-rose-600"
+          onClick={() => cancelOrder(o.order_no)}
+        >
+          Cancel
+        </button>
+        <button
+          className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+          onClick={() => deleteOrder(o.order_no)}
+        >
+          Del
+        </button>
+      </>
+    )}
+  </td>
+</tr>
             );
           })}
           {!rows.length && (
