@@ -1408,7 +1408,7 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
 
     const insertRun = db.prepare(`
       INSERT INTO circle_runs (
-        coil_id, run_date, operator,
+        coil_id, grade, thickness, run_date, operator,
         net_weight_kg, op_size_mm, circle_weight_kg, qty,
         scrap_weight_kg, patta_size, patta_weight_kg,
         pl_size, pl_weight_kg, created_at, updated_at
@@ -1458,6 +1458,8 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
         // Insert circle run
         insertRun.run(
           coilRow.id,
+          coilRow.grade || r["Grade"] || null,
+          coilRow.thickness || null,
           runDate,
           operator || null,
           netWeight,
