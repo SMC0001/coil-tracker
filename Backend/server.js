@@ -837,6 +837,32 @@ app.delete('/api/orders/:order_no', auth("admin"), (req, res) => {
   res.json({ ok: true });
 });
 
+// Bulk delete orders
+app.post('/api/orders/bulk-delete', auth("admin"), (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ error: "No order IDs provided" });
+  }
+
+  try {
+    const bulkDelete = db.transaction((ids) => {
+      const placeholders = ids.map(() => '?').join(',');
+      run(`DELETE FROM orders WHERE id IN (${placeholders})`, ids);
+    });
+
+    bulkDelete(ids);
+
+    res.json({
+      ok: true,
+      deleted: ids.length,
+      ids
+    });
+  } catch (err) {
+    console.error("❌ Bulk delete orders failed:", err.message);
+    res.status(500).json({ error: "Failed to delete orders" });
+  }
+});
+
 // ------------------------- Cancel / Un-cancel an order -------------------------
 app.patch('/api/orders/:id/cancel', auth('admin'), (req, res) => {
   const { id } = req.params;

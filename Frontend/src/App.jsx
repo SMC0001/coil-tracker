@@ -121,6 +121,9 @@ function OrdersTab() {
   // Same pattern as Coils: keep only importResult and reuse handler style
   const [importResult, setImportResult] = useState(null);
 
+  // === Bulk delete state ===
+  const [selectedIds, setSelectedIds] = useState([]);
+
   // Only show non-dispatched orders in "open" view
   const openOrders = useMemo(
     () =>
@@ -171,6 +174,7 @@ function OrdersTab() {
         },
       });
       setOrders(res.data || []);
+      setSelectedIds([]);
     } catch {
       /* ignore */
     }
@@ -271,6 +275,33 @@ function OrdersTab() {
     }
   };
 
+  // === Bulk delete ===
+  const bulkDelete = async () => {
+    if (!selectedIds.length) return alert("No orders selected.");
+    if (!confirm(`Delete ${selectedIds.length} orders? This cannot be undone.`)) return;
+    try {
+      await axios.post(`${API}/orders/bulk-delete`, { ids: selectedIds });
+      setSelectedIds([]);
+      await load();
+    } catch {
+      alert("Error deleting selected orders");
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === rows.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(rows.map((o) => o.order_no));
+    }
+  };
+
   // Cancel/Uncancel
   const cancelOrder = (id) => {
     setCancelRemark("");
@@ -330,16 +361,6 @@ function OrdersTab() {
     }
   };
 
-  // Table Head helper
-  const Head = ({ children, right, w, className = "" }) => (
-    <th
-      className={`whitespace-nowrap ${right ? "text-right" : "text-left"} ${className}`}
-      style={{ width: w }}
-    >
-      {children}
-    </th>
-  );
-
   const renderStatus = (status, cancelled_at) => {
     if (cancelled_at) {
       return (
@@ -366,146 +387,160 @@ function OrdersTab() {
     );
   };
 
-return (
-  <div className="space-y-4">
-    <Section
-      title="New Order"
-      right={
-        <div className="flex items-center gap-3">
-          {/* View toggle */}
-          <div className="bg-slate-100 rounded-lg p-1 flex h-10 items-center">
-            <button
-              type="button"
-              onClick={() => setView("open")}
-              className={`px-3 py-1 rounded ${view === "open" ? "bg-white shadow border" : ""}`}
-            >
-              Open
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("cancelled")}
-              className={`px-3 py-1 rounded ${view === "cancelled" ? "bg-white shadow border" : ""}`}
-            >
-              Cancelled
-            </button>
-          </div>
+  return (
+    <div className="space-y-4">
+      <Section
+        title="New Order"
+        right={
+          <div className="flex items-center gap-3">
+            {/* View toggle */}
+            <div className="bg-slate-100 rounded-lg p-1 flex h-10 items-center">
+              <button
+                type="button"
+                onClick={() => setView("open")}
+                className={`px-3 py-1 rounded ${view === "open" ? "bg-white shadow border" : ""}`}
+              >
+                Open
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("cancelled")}
+                className={`px-3 py-1 rounded ${view === "cancelled" ? "bg-white shadow border" : ""}`}
+              >
+                Cancelled
+              </button>
+            </div>
 
-          {/* Search */}
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search company / grade / order"
-            className="border rounded-lg px-3 h-10 w-64"
-          />
-
-          {/* Grade filter */}
-          <select
-            value={gradeFilter}
-            onChange={(e) => setGradeFilter(e.target.value)}
-            className="border rounded-lg px-3 h-10"
-          >
-            <option value="">All Grades</option>
-            {GRADES.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-
-          {/* Status filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border rounded-lg px-3 h-10"
-          >
-            <option value="">All</option>
-            <option value="Pending">Pending</option>
-            <option value="Partial">Partial</option>
-            <option value="Fulfilled">Dispatched</option>
-          </select>
-
-          {/* Export Excel */}
-          <div className="h-10 flex items-center">
-            <ExportSheetButton tab="orders" />
-          </div>
-
-          {/* Import Excel */}
-          <label className="bg-emerald-600 text-white px-3 rounded-lg cursor-pointer flex items-center h-10">
-            Import Excel
+            {/* Search */}
             <input
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleImport}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search company / grade / order"
+              className="border rounded-lg px-3 h-10 w-64"
             />
-          </label>
-        </div>
-      }
-    >
-      {/* Import result message */}
-      {importResult && (
-        <div
-          className={`p-2 mb-3 rounded ${
-            importResult.type === "success"
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {importResult.type === "success" ? (
-            <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
-          ) : (
-            <>❌ {importResult.error}</>
-          )}
-        </div>
-      )}
 
-      {/* Create form */}
-      <form
-        onSubmit={createOrder}
-        className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
+            {/* Grade filter */}
+            <select
+              value={gradeFilter}
+              onChange={(e) => setGradeFilter(e.target.value)}
+              className="border rounded-lg px-3 h-10"
+            >
+              <option value="">All Grades</option>
+              {GRADES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+
+            {/* Status filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border rounded-lg px-3 h-10"
+            >
+              <option value="">All</option>
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+              <option value="Fulfilled">Dispatched</option>
+            </select>
+
+            {/* Export Excel */}
+            <div className="h-10 flex items-center">
+              <ExportSheetButton tab="orders" />
+            </div>
+
+            {/* Import Excel */}
+            <label className="bg-emerald-600 text-white px-3 rounded-lg cursor-pointer flex items-center h-10">
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleImport}
+              />
+            </label>
+
+            {/* Bulk Delete */}
+            <button
+              onClick={bulkDelete}
+              className="bg-red-600 text-white px-3 rounded-lg disabled:opacity-50 h-10"
+              disabled={!selectedIds.length}
+            >
+              Delete Selected
+            </button>
+          </div>
+        }
       >
-        <Input label="Order Date" type="date" value={form.order_date}
-          onChange={(e) => setForm({ ...form, order_date: e.target.value })}
-        />
-        <Input label="Order By" value={form.order_by}
-          onChange={(e) => setForm({ ...form, order_by: e.target.value })}
-        />
-        <Input label="Company" value={form.company}
-          onChange={(e) => setForm({ ...form, company: e.target.value })}
-        />
-        <label className="text-sm">
-          <div className="text-slate-600 mb-1">Grade</div>
-          <select
-            value={form.grade}
-            onChange={(e) => setForm({ ...form, grade: e.target.value })}
-            className="border rounded-lg px-3 py-2 w-full"
+        {/* Import result message */}
+        {importResult && (
+          <div
+            className={`p-2 mb-3 rounded ${
+              importResult.type === "success"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
           >
-            <option value="">—</option>
-            {GRADES.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-        </label>
-        <NumberInput label="Thickness (mm)" value={form.thickness}
-          onChange={(e) => setForm({ ...form, thickness: e.target.value })}
-        />
-        <NumberInput label="Op. Size (mm)" value={form.op_size_mm}
-          onChange={(e) => setForm({ ...form, op_size_mm: e.target.value })}
-        />
-        <NumberInput label="Ordered Pcs" value={form.ordered_qty}
-          onChange={(e) => setForm({ ...form, ordered_qty: e.target.value })}
-        />
-        <NumberInput label="Ordered Weight (kg)" value={form.ordered_weight_kg}
-          onChange={(e) => setForm({ ...form, ordered_weight_kg: e.target.value })}
-        />
-        <div>
-          <button className="bg-sky-600 text-white rounded-lg px-3 py-2 w-full h-full">
-            Save
-          </button>
-        </div>
-      </form>
+            {importResult.type === "success" ? (
+              <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
+            ) : (
+              <>❌ {importResult.error}</>
+            )}
+          </div>
+        )}
+
+        {/* Create form */}
+        <form
+          onSubmit={createOrder}
+          className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
+        >
+          <Input label="Order Date" type="date" value={form.order_date}
+            onChange={(e) => setForm({ ...form, order_date: e.target.value })}
+          />
+          <Input label="Order By" value={form.order_by}
+            onChange={(e) => setForm({ ...form, order_by: e.target.value })}
+          />
+          <Input label="Company" value={form.company}
+            onChange={(e) => setForm({ ...form, company: e.target.value })}
+          />
+          <label className="text-sm">
+            <div className="text-slate-600 mb-1">Grade</div>
+            <select
+              value={form.grade}
+              onChange={(e) => setForm({ ...form, grade: e.target.value })}
+              className="border rounded-lg px-3 py-2 w-full"
+            >
+              <option value="">—</option>
+              {GRADES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </label>
+          <NumberInput label="Thickness (mm)" value={form.thickness}
+            onChange={(e) => setForm({ ...form, thickness: e.target.value })}
+          />
+          <NumberInput label="Op. Size (mm)" value={form.op_size_mm}
+            onChange={(e) => setForm({ ...form, op_size_mm: e.target.value })}
+          />
+          <NumberInput label="Ordered Pcs" value={form.ordered_qty}
+            onChange={(e) => setForm({ ...form, ordered_qty: e.target.value })}
+          />
+          <NumberInput label="Ordered Weight (kg)" value={form.ordered_weight_kg}
+            onChange={(e) => setForm({ ...form, ordered_weight_kg: e.target.value })}
+          />
+          <div>
+            <button className="bg-sky-600 text-white rounded-lg px-3 py-2 w-full h-full">
+              Save
+            </button>
+          </div>
+        </form>
 
         {/* Orders table */}
         <StickyTable
           headers={[
+            { label: <input
+                type="checkbox"
+                checked={selectedIds.length === rows.length && rows.length > 0}
+                onChange={toggleSelectAll}
+              />, className: "w-6" },
             { label: "Order No", className: "w-20" },
             { label: "Order Date", className: "w-28" },
             { label: "Order By", className: "w-28" },
@@ -527,178 +562,187 @@ return (
             const isEdit = editingId === o.order_no && view !== "cancelled";
             return (
               <tr key={o.order_no} className="border-t">
-  <td>{o.order_no}</td>
+                {/* Checkbox */}
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(o.order_no)}
+                    onChange={() => toggleSelect(o.order_no)}
+                  />
+                </td>
 
-  {/* Order Date */}
-  <td>
-    {isEdit ? (
-      <input
-        type="date"
-        className="border rounded px-2 py-1"
-        value={draft.order_date}
-        onChange={(e) => setDraft({ ...draft, order_date: e.target.value })}
-      />
-    ) : (
-      o.order_date || "—"
-    )}
-  </td>
+                <td>{o.order_no}</td>
 
-  {/* Order By */}
-  <td>
-    {isEdit ? (
-      <input
-        className="border rounded px-2 py-1"
-        value={draft.order_by}
-        onChange={(e) => setDraft({ ...draft, order_by: e.target.value })}
-      />
-    ) : (
-      o.order_by || "—"
-    )}
-  </td>
+                {/* Order Date */}
+                <td>
+                  {isEdit ? (
+                    <input
+                      type="date"
+                      className="border rounded px-2 py-1"
+                      value={draft.order_date}
+                      onChange={(e) => setDraft({ ...draft, order_date: e.target.value })}
+                    />
+                  ) : (
+                    o.order_date || "—"
+                  )}
+                </td>
 
-  {/* Company */}
-  <td>
-    {isEdit ? (
-      <input
-        className="border rounded px-2 py-1"
-        value={draft.company}
-        onChange={(e) => setDraft({ ...draft, company: e.target.value })}
-      />
-    ) : (
-      o.company || "—"
-    )}
-  </td>
+                {/* Order By */}
+                <td>
+                  {isEdit ? (
+                    <input
+                      className="border rounded px-2 py-1"
+                      value={draft.order_by}
+                      onChange={(e) => setDraft({ ...draft, order_by: e.target.value })}
+                    />
+                  ) : (
+                    o.order_by || "—"
+                  )}
+                </td>
 
-  {/* Grade */}
-  <td>
-    {isEdit ? (
-      <input
-        className="border rounded px-2 py-1"
-        value={draft.grade}
-        onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
-      />
-    ) : (
-      o.grade || "—"
-    )}
-  </td>
+                {/* Company */}
+                <td>
+                  {isEdit ? (
+                    <input
+                      className="border rounded px-2 py-1"
+                      value={draft.company}
+                      onChange={(e) => setDraft({ ...draft, company: e.target.value })}
+                    />
+                  ) : (
+                    o.company || "—"
+                  )}
+                </td>
 
-  {/* Thickness */}
-  <td>
-    {isEdit ? (
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-20"
-        value={draft.thickness}
-        onChange={(e) => setDraft({ ...draft, thickness: e.target.value })}
-      />
-    ) : (
-      o.thickness_mm ?? "—"
-    )}
-  </td>
+                {/* Grade */}
+                <td>
+                  {isEdit ? (
+                    <input
+                      className="border rounded px-2 py-1"
+                      value={draft.grade}
+                      onChange={(e) => setDraft({ ...draft, grade: e.target.value })}
+                    />
+                  ) : (
+                    o.grade || "—"
+                  )}
+                </td>
 
-  {/* Op. Size */}
-  <td>
-    {isEdit ? (
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-20"
-        value={draft.op_size_mm}
-        onChange={(e) => setDraft({ ...draft, op_size_mm: e.target.value })}
-      />
-    ) : (
-      o.op_size_mm ?? "—"
-    )}
-  </td>
+                {/* Thickness */}
+                <td>
+                  {isEdit ? (
+                    <input
+                      type="number"
+                      className="border rounded px-2 py-1 w-20"
+                      value={draft.thickness}
+                      onChange={(e) => setDraft({ ...draft, thickness: e.target.value })}
+                    />
+                  ) : (
+                    o.thickness_mm ?? "—"
+                  )}
+                </td>
 
-  {/* Ordered Pcs */}
-  <td className="text-right">
-    {isEdit ? (
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-24 text-right"
-        value={draft.ordered_qty}
-        onChange={(e) => setDraft({ ...draft, ordered_qty: e.target.value })}
-      />
-    ) : (
-      fmt(o.ordered_qty_pcs)
-    )}
-  </td>
+                {/* Op. Size */}
+                <td>
+                  {isEdit ? (
+                    <input
+                      type="number"
+                      className="border rounded px-2 py-1 w-20"
+                      value={draft.op_size_mm}
+                      onChange={(e) => setDraft({ ...draft, op_size_mm: e.target.value })}
+                    />
+                  ) : (
+                    o.op_size_mm ?? "—"
+                  )}
+                </td>
 
-  {/* Ordered Weight */}
-  <td className="text-right">
-    {isEdit ? (
-      <input
-        type="number"
-        className="border rounded px-2 py-1 w-24 text-right"
-        value={draft.ordered_weight_kg}
-        onChange={(e) =>
-          setDraft({ ...draft, ordered_weight_kg: e.target.value })
-        }
-      />
-    ) : (
-      fmt(o.ordered_weight_kg)
-    )}
-  </td>
+                {/* Ordered Pcs */}
+                <td className="text-right">
+                  {isEdit ? (
+                    <input
+                      type="number"
+                      className="border rounded px-2 py-1 w-24 text-right"
+                      value={draft.ordered_qty}
+                      onChange={(e) => setDraft({ ...draft, ordered_qty: e.target.value })}
+                    />
+                  ) : (
+                    fmt(o.ordered_qty_pcs)
+                  )}
+                </td>
 
-  {/* Fulfilled / Remaining */}
-  <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
-  <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
+                {/* Ordered Weight */}
+                <td className="text-right">
+                  {isEdit ? (
+                    <input
+                      type="number"
+                      className="border rounded px-2 py-1 w-24 text-right"
+                      value={draft.ordered_weight_kg}
+                      onChange={(e) =>
+                        setDraft({ ...draft, ordered_weight_kg: e.target.value })
+                      }
+                    />
+                  ) : (
+                    fmt(o.ordered_weight_kg)
+                  )}
+                </td>
 
-  {/* Cancelled On */}
-  <td className="pl-3">{o.cancelled_at || "—"}</td>
-  <td className="pl-3">{o.cancel_remarks || "—"}</td>
+                {/* Fulfilled / Remaining */}
+                <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
+                <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
 
-  {/* Status */}
-  <td className="pl-3 border-l border-slate-200">
-    {renderStatus(o.status, o.cancelled_at)}
-  </td>
+                {/* Cancelled On */}
+                <td className="pl-3">{o.cancelled_at || "—"}</td>
+                <td className="pl-3">{o.cancel_remarks || "—"}</td>
 
-  {/* Actions */}
-  <td className="whitespace-nowrap pl-4">
-    {isEdit ? (
-      <>
-        <button
-          className="px-2 py-1 rounded bg-emerald-600 text-white"
-          onClick={() => saveEdit(o.order_no)}
-        >
-          Save
-        </button>
-        <button
-          className="px-2 py-1 rounded border ml-2"
-          onClick={cancelEdit}
-        >
-          Cancel
-        </button>
-      </>
-    ) : (
-      <>
-        <button
-          className="px-2 py-1 rounded border"
-          onClick={() => startEdit(o)}
-        >
-          Edit
-        </button>
-        <button
-          className="px-2 py-1 rounded border border-rose-300 text-rose-600"
-          onClick={() => cancelOrder(o.order_no)}
-        >
-          Cancel
-        </button>
-        <button
-          className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-          onClick={() => deleteOrder(o.order_no)}
-        >
-          Del
-        </button>
-      </>
-    )}
-  </td>
-</tr>
+                {/* Status */}
+                <td className="pl-3 border-l border-slate-200">
+                  {renderStatus(o.status, o.cancelled_at)}
+                </td>
+
+                {/* Actions */}
+                <td className="whitespace-nowrap pl-4">
+                  {isEdit ? (
+                    <>
+                      <button
+                        className="px-2 py-1 rounded bg-emerald-600 text-white"
+                        onClick={() => saveEdit(o.order_no)}
+                      >
+                        Save
+                      </button>
+                      <button
+                        className="px-2 py-1 rounded border ml-2"
+                        onClick={cancelEdit}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="px-2 py-1 rounded border"
+                        onClick={() => startEdit(o)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="px-2 py-1 rounded border border-rose-300 text-rose-600"
+                        onClick={() => cancelOrder(o.order_no)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                        onClick={() => deleteOrder(o.order_no)}
+                      >
+                        Del
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
             );
           })}
           {!rows.length && (
             <tr>
-              <td className="py-4 text-slate-500" colSpan={15}>
+              <td className="py-4 text-slate-500" colSpan={16}>
                 {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
               </td>
             </tr>
