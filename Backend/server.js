@@ -1437,7 +1437,7 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
         const plWt      = Number(r["PL weight"] || 0);
 
         // Coil must exist
-        const coilRow = get(`SELECT id FROM coils WHERE rn = ?`, [coilRn]);
+        const coilRow = get(`SELECT * FROM coils WHERE rn = ?`, [coilRn]);
         if (!coilRow) {
           skipped++;
           errors.push({ line: i + 2, issues: [`Coil RN not found: ${coilRn}`] });
@@ -1483,11 +1483,12 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
           [netWeight, coilRow.id]
         );
 
-        // ✅ Insert/update circle_stock
+        // ✅ Insert/update circle_stock (with grade + thickness_mm from coil)
         if (circleWt > 0 && qty > 0) {
           run(
-            `INSERT INTO circle_stock (source_type, source_id, size_mm, weight_kg, qty, production_date, operator, created_at, updated_at)
-             VALUES ('circle', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            `INSERT INTO circle_stock (
+               source_type, source_id, grade, thickness_mm, size_mm, weight_kg, qty, production_date, operator, created_at, updated_at
+             ) VALUES ('circle', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
              ON CONFLICT(source_type, source_id) DO UPDATE SET
                grade = excluded.grade,
                thickness_mm = excluded.thickness_mm,
@@ -1496,7 +1497,16 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
                qty = excluded.qty,
                operator = excluded.operator,
                updated_at = datetime('now')`,
-            [runId, opSize || null, circleWt, qty, runDate, operator || null]
+            [
+              runId,
+              coilRow.grade || null,
+              coilRow.thickness || null,
+              opSize || null,
+              circleWt,
+              qty,
+              runDate,
+              operator || null
+            ]
           );
         }
 
