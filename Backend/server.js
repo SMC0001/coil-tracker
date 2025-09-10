@@ -86,6 +86,15 @@ try { db.prepare(`ALTER TABLE circle_runs ADD COLUMN pl_weight_kg REAL`).run(); 
 
 try { db.prepare(`ALTER TABLE pl_sales ADD COLUMN pl_stock_id INTEGER`).run(); } catch {}
 
+// ✅ Ensure circle_runs has updated_at
+try { 
+  db.prepare(`ALTER TABLE circle_runs ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))`).run(); 
+} catch (e) { 
+  if (!String(e.message).includes("duplicate column name")) {
+    console.error("Migration failed (circle_runs.updated_at):", e.message);
+  }
+}
+
 // ✅ orders table migrations (idempotent)
 try { db.prepare(`ALTER TABLE orders ADD COLUMN thickness_mm REAL`).run(); } catch {}
 try { db.prepare(`ALTER TABLE orders ADD COLUMN op_size_mm REAL`).run(); } catch {}
