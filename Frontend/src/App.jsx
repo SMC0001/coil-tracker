@@ -366,145 +366,142 @@ function OrdersTab() {
     );
   };
 
-  return (
-    <div className="space-y-4">
-      <Section
-        title="New Order"
-        right={
-          <div className="flex items-center gap-2">
-            {/* View toggle */}
-            <div className="bg-slate-100 rounded-lg p-1 flex">
-              <button
-                type="button"
-                onClick={() => setView("open")}
-                className={`px-3 py-1 rounded ${view === "open" ? "bg-white shadow border" : ""}`}
-              >
-                Open
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("cancelled")}
-                className={`px-3 py-1 rounded ${view === "cancelled" ? "bg-white shadow border" : ""}`}
-              >
-                Cancelled
-              </button>
-            </div>
-
-            {/* Search / filters */}
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search company / grade / order"
-              className="border rounded-lg px-3 py-2 w-64"
-            />
-
-            <label className="text-sm">
-              <div className="text-slate-600 mb-1">Grade</div>
-              <select
-                value={gradeFilter}
-                onChange={(e) => setGradeFilter(e.target.value)}
-                className="border rounded-lg px-3 py-2"
-              >
-                <option value="">All Grades</option>
-                {GRADES.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm">
-              <div className="text-slate-600 mb-1">Status</div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="border rounded-lg px-3 py-2"
-              >
-                <option value="">All</option>
-                <option value="Pending">Pending</option>
-                <option value="Partial">Partial</option>
-                <option value="Fulfilled">Dispatched</option>
-              </select>
-            </label>
-
-            <ExportSheetButton tab="orders" />
-
-            {/* EXACT same Import Excel control as Coils */}
-            <label className="bg-emerald-600 text-white px-3 py-2 rounded-lg cursor-pointer">
-              Import Excel
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={handleImport}
-              />
-            </label>
-          </div>
-        }
-      >
-        {/* Import result message (same pattern as Coils) */}
-        {importResult && (
-          <div
-            className={`p-2 mb-3 rounded ${
-              importResult.type === "success"
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            {importResult.type === "success" ? (
-              <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
-            ) : (
-              <>❌ {importResult.error}</>
-            )}
-          </div>
-        )}
-
-        {/* Create form */}
-        <form
-          onSubmit={createOrder}
-          className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
-        >
-          <Input label="Order Date" type="date" value={form.order_date}
-            onChange={(e) => setForm({ ...form, order_date: e.target.value })}
-          />
-          <Input label="Order By" value={form.order_by}
-            onChange={(e) => setForm({ ...form, order_by: e.target.value })}
-          />
-          <Input label="Company" value={form.company}
-            onChange={(e) => setForm({ ...form, company: e.target.value })}
-          />
-          <label className="text-sm">
-            <div className="text-slate-600 mb-1">Grade</div>
-            <select
-              value={form.grade}
-              onChange={(e) => setForm({ ...form, grade: e.target.value })}
-              className="border rounded-lg px-3 py-2 w-full"
+return (
+  <div className="space-y-4">
+    <Section
+      title="New Order"
+      right={
+        <div className="flex items-center gap-3">
+          {/* View toggle */}
+          <div className="bg-slate-100 rounded-lg p-1 flex h-10 items-center">
+            <button
+              type="button"
+              onClick={() => setView("open")}
+              className={`px-3 py-1 rounded ${view === "open" ? "bg-white shadow border" : ""}`}
             >
-              <option value="">—</option>
-              {GRADES.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-          </label>
-          <NumberInput label="Thickness (mm)" value={form.thickness}
-            onChange={(e) => setForm({ ...form, thickness: e.target.value })}
-          />
-          <NumberInput label="Op. Size (mm)" value={form.op_size_mm}
-            onChange={(e) => setForm({ ...form, op_size_mm: e.target.value })}
-          />
-          <NumberInput label="Ordered Pcs" value={form.ordered_qty}
-            onChange={(e) => setForm({ ...form, ordered_qty: e.target.value })}
-          />
-          <NumberInput label="Ordered Weight (kg)" value={form.ordered_weight_kg}
-            onChange={(e) => setForm({ ...form, ordered_weight_kg: e.target.value })}
-          />
-          <div>
-            <button className="bg-sky-600 text-white rounded-lg px-3 py-2 w-full h-full">
-              Save
+              Open
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("cancelled")}
+              className={`px-3 py-1 rounded ${view === "cancelled" ? "bg-white shadow border" : ""}`}
+            >
+              Cancelled
             </button>
           </div>
-        </form>
+
+          {/* Search */}
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search company / grade / order"
+            className="border rounded-lg px-3 h-10 w-64"
+          />
+
+          {/* Grade filter */}
+          <select
+            value={gradeFilter}
+            onChange={(e) => setGradeFilter(e.target.value)}
+            className="border rounded-lg px-3 h-10"
+          >
+            <option value="">All Grades</option>
+            {GRADES.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+
+          {/* Status filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="border rounded-lg px-3 h-10"
+          >
+            <option value="">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Partial">Partial</option>
+            <option value="Fulfilled">Dispatched</option>
+          </select>
+
+          {/* Export Excel */}
+          <div className="h-10 flex items-center">
+            <ExportSheetButton tab="orders" />
+          </div>
+
+          {/* Import Excel */}
+          <label className="bg-emerald-600 text-white px-3 rounded-lg cursor-pointer flex items-center h-10">
+            Import Excel
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImport}
+            />
+          </label>
+        </div>
+      }
+    >
+      {/* Import result message */}
+      {importResult && (
+        <div
+          className={`p-2 mb-3 rounded ${
+            importResult.type === "success"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+          }`}
+        >
+          {importResult.type === "success" ? (
+            <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
+          ) : (
+            <>❌ {importResult.error}</>
+          )}
+        </div>
+      )}
+
+      {/* Create form */}
+      <form
+        onSubmit={createOrder}
+        className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-3"
+      >
+        <Input label="Order Date" type="date" value={form.order_date}
+          onChange={(e) => setForm({ ...form, order_date: e.target.value })}
+        />
+        <Input label="Order By" value={form.order_by}
+          onChange={(e) => setForm({ ...form, order_by: e.target.value })}
+        />
+        <Input label="Company" value={form.company}
+          onChange={(e) => setForm({ ...form, company: e.target.value })}
+        />
+        <label className="text-sm">
+          <div className="text-slate-600 mb-1">Grade</div>
+          <select
+            value={form.grade}
+            onChange={(e) => setForm({ ...form, grade: e.target.value })}
+            className="border rounded-lg px-3 py-2 w-full"
+          >
+            <option value="">—</option>
+            {GRADES.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </label>
+        <NumberInput label="Thickness (mm)" value={form.thickness}
+          onChange={(e) => setForm({ ...form, thickness: e.target.value })}
+        />
+        <NumberInput label="Op. Size (mm)" value={form.op_size_mm}
+          onChange={(e) => setForm({ ...form, op_size_mm: e.target.value })}
+        />
+        <NumberInput label="Ordered Pcs" value={form.ordered_qty}
+          onChange={(e) => setForm({ ...form, ordered_qty: e.target.value })}
+        />
+        <NumberInput label="Ordered Weight (kg)" value={form.ordered_weight_kg}
+          onChange={(e) => setForm({ ...form, ordered_weight_kg: e.target.value })}
+        />
+        <div>
+          <button className="bg-sky-600 text-white rounded-lg px-3 py-2 w-full h-full">
+            Save
+          </button>
+        </div>
+      </form>
 
         {/* Orders table */}
         <StickyTable
