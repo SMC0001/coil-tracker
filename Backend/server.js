@@ -103,6 +103,19 @@ try {
   }
 }
 
+// ✅ Ensure circle_stock has grade and thickness_mm
+try { db.prepare(`ALTER TABLE circle_stock ADD COLUMN grade TEXT`).run(); } catch (e) {
+  if (!String(e.message).includes("duplicate column name")) {
+    console.error("Migration failed (circle_stock.grade):", e.message);
+  }
+}
+
+try { db.prepare(`ALTER TABLE circle_stock ADD COLUMN thickness_mm REAL`).run(); } catch (e) {
+  if (!String(e.message).includes("duplicate column name")) {
+    console.error("Migration failed (circle_stock.thickness_mm):", e.message);
+  }
+}
+
 // ✅ orders table migrations (idempotent)
 try { db.prepare(`ALTER TABLE orders ADD COLUMN thickness_mm REAL`).run(); } catch {}
 try { db.prepare(`ALTER TABLE orders ADD COLUMN op_size_mm REAL`).run(); } catch {}
