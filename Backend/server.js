@@ -1793,36 +1793,45 @@ app.delete('/api/coils/:id', auth('admin'), (req, res) => {
 
 /* ------------------------------ Circle Runs ------------------------------- */
 app.post('/api/circle-runs', auth(), (req, res) => {
-  const { coil_id, run_date, operator } = req.body;
+  const { coil_id, run_date, operator, net_weight_kg } = req.body;
   if (!coil_id) return res.status(400).json({ error: 'coil_id is required' });
   const coil = get(`SELECT * FROM coils WHERE id=?`, [coil_id]);
   if (!coil) return res.status(404).json({ error: 'Coil not found' });
 
-// How much already cut in previous runs
-const cutSum = get(`SELECT IFNULL(SUM(net_weight_kg),0) AS total_cut FROM circle_runs WHERE coil_id=?`, [coil_id]);
-const alreadyCut = cutSum?.total_cut || 0;
+  const newCut = Number(net_weight_kg || 0);
 
-// How much this new run plans to cut
-const newCut = Number(req.body.net_weight_kg || 0);
-
-// Check limit
-if (alreadyCut + newCut > coil.purchase_weight_kg) {
-  return res.status(400).json({ error: 'Cutting exceeds available coil weight. Please check balance.' });
-}
+  // Safety: don’t allow cutting more than available
+  const cutSum = get(`SELECT IFNULL(SUM(net_weight_kg),0) AS total_cut FROM circle_runs WHERE coil_id=?`, [coil_id]);
+  if ((cutSum?.total_cut || 0) + newCut > coil.purchase_weight_kg) {
+    return res.status(400).json({ error: 'Cutting exceeds available coil weight. Please check balance.' });
+  }
 
   const info = run(
-  `INSERT INTO circle_runs(coil_id,run_date,operator,grade,thickness,width,net_weight_kg)
-   VALUES (?,?,?,?,?,?,?)`,
-  [
-    coil_id,
-    run_date || new Date().toISOString().slice(0, 10),
-    operator || null,
-    coil.grade || null,
-    coil.thickness || null,
-    coil.width || null,
-    newCut
-  ]
-);
+    `INSERT INTO circle_runs(coil_id,run_date,operator,grade,thickness,width,net_weight_kg)
+     VALUES (?,?,?,?,?,?,?)`,
+    [
+      coil_id,
+      run_date || new Date().toISOString().slice(0, 10),
+      operator || null,
+      coil.grade || null,
+      coil.thickness || null,
+      coil.width || null,
+      newCut
+    ]
+  );
+
+  // ✅ Deduct from coil_stock immediately
+  const cs = get(`SELECT * FROM coil_stock WHERE coil_id=?`, [coil_id]);
+  if (cs) {
+    run(
+      `UPDATE coil_stock 
+         SET available_weight_kg = MAX(0, available_weight_kg - ?), 
+             updated_at=datetime('now') 
+       WHERE coil_id=?`,
+      [newCut, coil_id]
+    );
+  }
+
   res.json(get(`SELECT * FROM circle_runs WHERE id=?`, [info.lastInsertRowid]));
 });
 
