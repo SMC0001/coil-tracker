@@ -1366,6 +1366,100 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
   }
 });
 
+// Bulk Import Circle Runs from Excel
+app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+    const workbook = xlsx.readFile(req.file.path);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(sheet);
+    if (!rows.length) return res.status(400).json({ error: "No rows found in worksheet" });
+
+    const insert = db.prepare(`
+      INSERT INTO circle_runs (
+        coil_id, run_date, operator,
+        net_weight_kg, op_size_mm, circle_weight_kg, qty,
+        scrap_weight_kg, patta_size, patta_weight_kg,
+        pl_size, pl_weight_kg, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
+
+    let inserted = 0;
+    let skipped = 0;
+    const errors = [];
+
+    const insertMany = db.transaction((rows) => {
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+
+        const runDate   = parseDate(r["Date"]);
+        const coilRn    = String(r["Coil RN no."] || "").trim();
+        const operator  = (r["Operator"] || "").trim();
+        const netWeight = Number(r["Net weight"] || 0);
+        const opSize    = Number(r["Op. size"] || 0);
+        const circleWt  = Number(r["Circle weight"] || 0);
+        const qty       = Number(r["Pcs"] || 0);
+        const scrapWt   = Number(r["Scrap"] || 0);
+        const pattaSize = (r["Patta Size"] || "").toString().trim() || null;
+        const pattaWt   = Number(r["Patta weight"] || 0);
+        const plSize    = (r["PL Size"] || "").toString().trim() || null;
+        const plWt      = Number(r["PL weight"] || 0);
+
+        // Coil must exist
+        const coilRow = get(`SELECT id FROM coils WHERE rn = ?`, [coilRn]);
+        if (!coilRow) {
+          skipped++;
+          errors.push({ line: i + 2, issues: [`Coil RN not found: ${coilRn}`] });
+          continue;
+        }
+
+        if (!runDate) {
+          skipped++;
+          errors.push({ line: i + 2, issues: ["Invalid/blank Date"] });
+          continue;
+        }
+        if (!netWeight || netWeight <= 0) {
+          skipped++;
+          errors.push({ line: i + 2, issues: ["Net weight required and must be > 0"] });
+          continue;
+        }
+
+        insert.run(
+          coilRow.id,
+          runDate,
+          operator || null,
+          netWeight,
+          opSize || null,
+          circleWt || null,
+          qty || null,
+          scrapWt || null,
+          pattaSize,
+          pattaWt || null,
+          plSize,
+          plWt || null
+        );
+        inserted++;
+      }
+    });
+
+    insertMany(rows);
+
+    try { fs.unlinkSync(req.file.path); } catch {}
+
+    return res.json({
+      message: "✅ Circle import completed",
+      inserted,
+      skipped,
+      errors,
+      total: rows.length,
+    });
+  } catch (err) {
+    console.error("❌ Circle import error:", err);
+    try { if (req.file?.path) fs.unlinkSync(req.file.path); } catch {}
+    return res.status(500).json({ error: err.message || "Failed to import circles" });
+  }
+});
 
 // List coils
 app.get('/api/coils', auth(), (req, res) => {

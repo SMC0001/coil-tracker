@@ -1628,6 +1628,9 @@ function CircleTab({ focusId }) {
   const [draft, setDraft] = useState({});
   const rowRefs = useRef({});
 
+  // ✅ new state for import result
+  const [importResult, setImportResult] = useState(null);
+
   const load = async () => {
     const res = await axios.get(`${API}/circle-runs`, {
       params: {
@@ -1658,6 +1661,33 @@ function CircleTab({ focusId }) {
       return () => clearTimeout(t);
     }
   }, [rows, focusId]);
+
+  // === IMPORT HANDLER (same as Coils) ===
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(`${API}/circle-runs/import`, formData, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      setImportResult({ type: "success", data: res.data });
+      await load(); // reload runs
+    } catch (err) {
+      console.error("❌ Import failed", err);
+      setImportResult({
+        type: "error",
+        error: err.response?.data?.error || "Import failed",
+      });
+    } finally {
+      e.target.value = "";
+    }
+  };
 
   const startEdit = (r) => {
     setEditingId(r.id);
@@ -1690,29 +1720,29 @@ function CircleTab({ focusId }) {
       scrap_weight_kg: toNum(draft.scrap_weight_kg),
       patta_size: draft.patta_size || null,
       patta_weight_kg: toNum(draft.patta_weight_kg),
-      	pl_size: draft.pl_size || null,
+      pl_size: draft.pl_size || null,
       pl_weight_kg: toNum(draft.pl_weight_kg),
     };
     try {
       await axios.patch(`${API}/circle-runs/${id}`, payload);
       await load();
       cancelEdit();
-   } catch (error) {
-  console.error("Failed to save circle run:", error);
-  const msg =
-    error?.response?.data?.error ||
-    error?.response?.data?.message ||
-    error?.message ||
-    "Failed to save circle run.";
-  alert(msg);
-}
+    } catch (error) {
+      console.error("Failed to save circle run:", error);
+      const msg =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to save circle run.";
+      alert(msg);
+    }
   };
   const toNum = (v) => {
-  if (v === "" || v == null) return null;
-  const cleaned = String(v).replace(/[^\d.-]/g, ""); // remove commas/spaces
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : null;
-};
+    if (v === "" || v == null) return null;
+    const cleaned = String(v).replace(/[^\d.-]/g, "");
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : null;
+  };
 
   const deleteRun = async (id) => {
     if (!confirm("Delete this circle run?")) return;
@@ -1739,34 +1769,21 @@ function CircleTab({ focusId }) {
     return net - circ - scrap - patta - pl;
   };
 
-const Head = ({ children, w, right, className = "" }) => (
-  <th
-    className={`whitespace-nowrap px-3 py-2 ${right ? "text-right" : "text-left"} ${className}`}
-    style={{ width: w }}
-  >
-    {children}
-  </th>
-);
+  const Head = ({ children, w, right, className = "" }) => (
+    <th
+      className={`whitespace-nowrap px-3 py-2 ${right ? "text-right" : "text-left"} ${className}`}
+      style={{ width: w }}
+    >
+      {children}
+    </th>
+  );
 
+  // export CSV
   const exportCSV = () => {
     const headers = [
-      "Date",
-      "Coil RN",
-      "Operator",
-      "Grade",
-      "Thickness",
-      "Width",
-      "Net weight",
-      "Op. size",
-      "Circle weight",
-      "Pcs",
-      "Scrap",
-      "Patta Size",
-      "Patta weight",
-      "PL Size",
-      "PL weight",
-      "Balance",
-      "Yield %",
+      "Date","Coil RN","Operator","Grade","Thickness","Width",
+      "Net weight","Op. size","Circle weight","Pcs","Scrap",
+      "Patta Size","Patta weight","PL Size","PL weight","Balance","Yield %"
     ];
     const lines = [headers.join(",")];
     rows.forEach((r) => {
@@ -1790,23 +1807,14 @@ const Head = ({ children, w, right, className = "" }) => (
         r.pl_weight_kg ?? "",
         b,
         y.toFixed(2),
-      ].map((x) => (x === null || x === undefined ? "" : String(x)));
-      lines.push(vals.map(csvEscape).join(","));
+      ].map((x) => (x == null ? "" : String(x)));
+      lines.push(vals.join(","));
     });
-    downloadCSV("circle_runs.csv", lines.join("\n"));
-  };
-  const csvEscape = (v) => {
-    if (v.includes(",") || v.includes('"') || v.includes("\n")) {
-      return `"${v.replace(/"/g, '""')}"`;
-    }
-    return v;
-  };
-  const downloadCSV = (filename, content) => {
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = "circle_runs.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1815,306 +1823,254 @@ const Head = ({ children, w, right, className = "" }) => (
     <Section
       title="Circle — Production Runs (Auto-Stock Update)"
       right={
-  <div className="flex items-center gap-2">
-    <Input
-      label="From"
-      type="date"
-      value={from}
-      onChange={(e) => setFrom(e.target.value)}
-    />
-    <Input
-      label="To"
-      type="date"
-      value={to}
-      onChange={(e) => setTo(e.target.value)}
-    />
-    <label className="text-sm">
-      <div className="text-slate-600 mb-1">Operator</div>
-      <select
-        value={operator}
-        onChange={(e) => setOperator(e.target.value)}
-        className="border rounded-lg px-3 py-2"
-      >
-        <option value="">All</option>
-        {OPERATORS.map((o) => (
-          <option key={o}>{o}</option>
-        ))}
-      </select>
-    </label>
-    <input
-      value={q}
-      onChange={(e) => setQ(e.target.value)}
-      placeholder="Search RN / Grade"
-      className="border rounded-lg px-3 py-2 w-48"
-    />
+        <div className="flex items-center gap-2">
+          <Input label="From" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Input label="To" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
 
-    {/* 👇 New Excel Export button */}
-    <ExportSheetButton tab="circle_runs" />
-
-    <button
-      onClick={exportCSV}
-      className="bg-emerald-600 text-white rounded-lg px-3 py-2"
-    >
-      Export CSV
-    </button>
-  </div>
-}
-    >
-      <div className="text-xs text-slate-600 mb-3 bg-blue-50 p-2 rounded">
-        <b>Note:</b> Circle production automatically updates stock. Use Stock & Sales tab to record actual sales.
-      </div>
-
-      <StickyTable
-  headers={[
-    { label: "Date", className: "w-40" },
-    { label: "Coil RN no.", className: "w-44" },
-    { label: "Operator", className: "w-40" },
-    { label: "Grade", className: "w-28" },
-    { label: "Thickness", className: "w-32" },
-    { label: "Width", className: "w-32" },
-    { label: "Net weight", className: "text-right w-44" },
-    { label: "Op. size", className: "text-right w-36" },
-    { label: "Circle weight", className: "text-right w-44" },
-    { label: "Pcs", className: "text-right w-28" },
-    { label: "Scrap", className: "text-right w-44" },
-    { label: "Patta Size", className: "text-right w-40" },
-    { label: "Patta weight", className: "text-right w-48" },
-    { label: "PL Size", className: "text-right w-40" },
-    { label: "PL weight", className: "text-right w-48" },
-    { label: "Balance", className: "text-right w-40" },
-    { label: "Yield %", className: "text-right w-28" },
-    { label: "", className: "w-36" },
-  ]}
->
-  {rows.map((r) => {
-    const isEdit = editingId === r.id;
-    const y = isEdit
-      ? (() => {
-          const net = Number(draft.net_weight_kg || 0);
-          const circ = Number(draft.circle_weight_kg || 0);
-          return net > 0 ? (100 * circ) / net : 0;
-        })()
-      : yieldPct(r);
-    const b = isEdit
-      ? (() => {
-          const net = Number(draft.net_weight_kg || 0);
-          const circ = Number(draft.circle_weight_kg || 0);
-          const scrap = Number(draft.scrap_weight_kg || 0);
-          const patta = Number(draft.patta_weight_kg || 0);
-          const pl = Number(draft.pl_weight_kg || 0);
-          return net - circ - scrap - patta - pl;
-        })()
-      : balance(r);
-
-    return (
-      <tr
-        key={r.id}
-        ref={(el) => (rowRefs.current[r.id] = el)}
-        className="border-t"
-      >
-        {/* Date */}
-        <td>
-          {isEdit ? (
-            <input
-              type="date"
-              value={draft.run_date}
-              onChange={(e) =>
-                setDraft({ ...draft, run_date: e.target.value })
-              }
-              className="border rounded px-2 py-1 w-[130px]"
-            />
-          ) : (
-            r.run_date || "—"
-          )}
-        </td>
-
-        {/* RN */}
-        <td>{r.rn}</td>
-
-        {/* Operator */}
-        <td>
-          {isEdit ? (
+          <label className="text-sm">
+            <div className="text-slate-600 mb-1">Operator</div>
             <select
-              value={draft.operator}
-              onChange={(e) =>
-                setDraft({ ...draft, operator: e.target.value })
-              }
-              className="border rounded px-2 py-1 w-[130px]"
+              value={operator}
+              onChange={(e) => setOperator(e.target.value)}
+              className="border rounded-lg px-3 py-2"
             >
-              <option value="">—</option>
+              <option value="">All</option>
               {OPERATORS.map((o) => (
                 <option key={o}>{o}</option>
               ))}
             </select>
-          ) : (
-            r.operator || "—"
-          )}
-        </td>
+          </label>
 
-        {/* Spec */}
-        <td>{r.grade || "—"}</td>
-        <td>{r.thickness ?? "—"}</td>
-        <td>{r.width ?? "—"}</td>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search RN / Grade"
+            className="border rounded-lg px-3 py-2 w-48"
+          />
 
-        {/* Numbers */}
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.net_weight_kg}
-              on={(v) => setDraft({ ...draft, net_weight_kg: v })}
-              w={110}
-            />
-          ) : (
-            fmt(r.net_weight_kg)
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.op_size_mm}
-              on={(v) => setDraft({ ...draft, op_size_mm: v })}
-              w={80}
-            />
-          ) : (
-            r.op_size_mm ?? "—"
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.circle_weight_kg}
-              on={(v) => setDraft({ ...draft, circle_weight_kg: v })}
-              w={110}
-            />
-          ) : (
-            fmt(r.circle_weight_kg)
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.qty}
-              on={(v) => setDraft({ ...draft, qty: v })}
-              w={80}
-            />
-          ) : (
-            fmt(r.qty)
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.scrap_weight_kg}
-              on={(v) => setDraft({ ...draft, scrap_weight_kg: v })}
-              w={95}
-            />
-          ) : (
-            fmt(r.scrap_weight_kg)
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
+          <ExportSheetButton tab="circle_runs" />
+          <button onClick={exportCSV} className="bg-emerald-600 text-white rounded-lg px-3 py-2">
+            Export CSV
+          </button>
+
+          {/* ✅ New Import Excel button */}
+          <label className="bg-emerald-600 text-white px-3 py-2 rounded-lg cursor-pointer">
+            Import Excel
             <input
-              value={draft.patta_size}
-              onChange={(e) =>
-                setDraft({ ...draft, patta_size: e.target.value })
-              }
-              className="border rounded px-2 py-1 w-[95px] text-right"
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleImport}
             />
+          </label>
+        </div>
+      }
+    >
+      {/* ✅ Import result message */}
+      {importResult && (
+        <div
+          className={`p-2 mb-3 rounded ${
+            importResult.type === "success"
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+          }`}
+        >
+          {importResult.type === "success" ? (
+            <>✅ Imported: {importResult.data.inserted}, Skipped: {importResult.data.skipped}</>
           ) : (
-            r.patta_size || "—"
+            <>❌ {importResult.error}</>
           )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.patta_weight_kg}
-              on={(v) => setDraft({ ...draft, patta_weight_kg: v })}
-              w={110}
-            />
-          ) : (
-            fmt(r.patta_weight_kg)
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <input
-              value={draft.pl_size}
-              onChange={(e) =>
-                setDraft({ ...draft, pl_size: e.target.value })
-              }
-              className="border rounded px-2 py-1 w-[95px] text-right"
-            />
-          ) : (
-            r.pl_size || "—"
-          )}
-        </td>
-        <td className="text-right">
-          {isEdit ? (
-            <NumCell
-              val={draft.pl_weight_kg}
-              on={(v) => setDraft({ ...draft, pl_weight_kg: v })}
-              w={110}
-            />
-          ) : (
-            fmt(r.pl_weight_kg)
-          )}
-        </td>
+        </div>
+      )}
 
-        {/* Derived */}
-        <td className="text-right font-medium">{fmt(b)}</td>
-        <td className="text-right">{y.toFixed(2)}</td>
+      {/* Table */}
+      <StickyTable
+        headers={[
+          { label: "Date", className: "w-40" },
+          { label: "Coil RN no.", className: "w-44" },
+          { label: "Operator", className: "w-40" },
+          { label: "Grade", className: "w-28" },
+          { label: "Thickness", className: "w-32" },
+          { label: "Width", className: "w-32" },
+          { label: "Net weight", className: "text-right w-44" },
+          { label: "Op. size", className: "text-right w-36" },
+          { label: "Circle weight", className: "text-right w-44" },
+          { label: "Pcs", className: "text-right w-28" },
+          { label: "Scrap", className: "text-right w-44" },
+          { label: "Patta Size", className: "text-right w-40" },
+          { label: "Patta weight", className: "text-right w-48" },
+          { label: "PL Size", className: "text-right w-40" },
+          { label: "PL weight", className: "text-right w-48" },
+          { label: "Balance", className: "text-right w-40" },
+          { label: "Yield %", className: "text-right w-28" },
+          { label: "", className: "w-36" },
+        ]}
+      >
+        {rows.map((r) => {
+          const isEdit = editingId === r.id;
+          const y = isEdit
+            ? (() => {
+                const net = Number(draft.net_weight_kg || 0);
+                const circ = Number(draft.circle_weight_kg || 0);
+                return net > 0 ? (100 * circ) / net : 0;
+              })()
+            : yieldPct(r);
+          const b = isEdit
+            ? (() => {
+                const net = Number(draft.net_weight_kg || 0);
+                const circ = Number(draft.circle_weight_kg || 0);
+                const scrap = Number(draft.scrap_weight_kg || 0);
+                const patta = Number(draft.patta_weight_kg || 0);
+                const pl = Number(draft.pl_weight_kg || 0);
+                return net - circ - scrap - patta - pl;
+              })()
+            : balance(r);
 
-        {/* Actions */}
-        <td className="whitespace-nowrap">
-          {isEdit ? (
-            <div className="flex gap-1">
-              <button
-                className="px-2 py-1 rounded bg-emerald-600 text-white"
-                onClick={() => saveEdit(r.id)}
-              >
-                Save
-              </button>
-              <button
-                className="px-2 py-1 rounded border"
-                onClick={cancelEdit}
-                type="button"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-1">
-              <button
-                className="px-2 py-1 rounded border"
-                onClick={() => startEdit(r)}
-              >
-                Edit
-              </button>
-              <button
-                className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                onClick={() => deleteRun(r.id)}
-              >
-                Del
-              </button>
-            </div>
-          )}
-        </td>
-      </tr>
-    );
-  })}
-  {!rows.length && (
-    <tr>
-      <td className="py-4 text-slate-500 text-center" colSpan={18}>
-        No runs found.
-      </td>
-    </tr>
-  )}
-</StickyTable>
+          return (
+            <tr key={r.id} ref={(el) => (rowRefs.current[r.id] = el)} className="border-t">
+              <td>
+                {isEdit ? (
+                  <input
+                    type="date"
+                    value={draft.run_date}
+                    onChange={(e) => setDraft({ ...draft, run_date: e.target.value })}
+                    className="border rounded px-2 py-1 w-[130px]"
+                  />
+                ) : (
+                  r.run_date || "—"
+                )}
+              </td>
+              <td>{r.rn}</td>
+              <td>
+                {isEdit ? (
+                  <select
+                    value={draft.operator}
+                    onChange={(e) => setDraft({ ...draft, operator: e.target.value })}
+                    className="border rounded px-2 py-1 w-[130px]"
+                  >
+                    <option value="">—</option>
+                    {OPERATORS.map((o) => (
+                      <option key={o}>{o}</option>
+                    ))}
+                  </select>
+                ) : (
+                  r.operator || "—"
+                )}
+              </td>
+              <td>{r.grade || "—"}</td>
+              <td>{r.thickness ?? "—"}</td>
+              <td>{r.width ?? "—"}</td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.net_weight_kg} on={(v) => setDraft({ ...draft, net_weight_kg: v })} w={110} />
+                ) : (
+                  fmt(r.net_weight_kg)
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.op_size_mm} on={(v) => setDraft({ ...draft, op_size_mm: v })} w={80} />
+                ) : (
+                  r.op_size_mm ?? "—"
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.circle_weight_kg} on={(v) => setDraft({ ...draft, circle_weight_kg: v })} w={110} />
+                ) : (
+                  fmt(r.circle_weight_kg)
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.qty} on={(v) => setDraft({ ...draft, qty: v })} w={80} />
+                ) : (
+                  fmt(r.qty)
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.scrap_weight_kg} on={(v) => setDraft({ ...draft, scrap_weight_kg: v })} w={95} />
+                ) : (
+                  fmt(r.scrap_weight_kg)
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <input
+                    value={draft.patta_size}
+                    onChange={(e) => setDraft({ ...draft, patta_size: e.target.value })}
+                    className="border rounded px-2 py-1 w-[95px] text-right"
+                  />
+                ) : (
+                  r.patta_size || "—"
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.patta_weight_kg} on={(v) => setDraft({ ...draft, patta_weight_kg: v })} w={110} />
+                ) : (
+                  fmt(r.patta_weight_kg)
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <input
+                    value={draft.pl_size}
+                    onChange={(e) => setDraft({ ...draft, pl_size: e.target.value })}
+                    className="border rounded px-2 py-1 w-[95px] text-right"
+                  />
+                ) : (
+                  r.pl_size || "—"
+                )}
+              </td>
+              <td className="text-right">
+                {isEdit ? (
+                  <NumCell val={draft.pl_weight_kg} on={(v) => setDraft({ ...draft, pl_weight_kg: v })} w={110} />
+                ) : (
+                  fmt(r.pl_weight_kg)
+                )}
+              </td>
+              <td className="text-right font-medium">{fmt(b)}</td>
+              <td className="text-right">{y.toFixed(2)}</td>
+              <td className="whitespace-nowrap">
+                {isEdit ? (
+                  <div className="flex gap-1">
+                    <button className="px-2 py-1 rounded bg-emerald-600 text-white" onClick={() => saveEdit(r.id)}>
+                      Save
+                    </button>
+                    <button className="px-2 py-1 rounded border" onClick={cancelEdit} type="button">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-1">
+                    <button className="px-2 py-1 rounded border" onClick={() => startEdit(r)}>
+                      Edit
+                    </button>
+                    <button
+                      className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
+                      onClick={() => deleteRun(r.id)}
+                    >
+                      Del
+                    </button>
+                  </div>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+        {!rows.length && (
+          <tr>
+            <td className="py-4 text-slate-500 text-center" colSpan={18}>
+              No runs found.
+            </td>
+          </tr>
+        )}
+      </StickyTable>
     </Section>
   );
 }
-
 
 /* ================================= PATTA ================================== */
 function PattaTab() {
