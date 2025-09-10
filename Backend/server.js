@@ -1434,6 +1434,7 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
           continue;
         }
 
+        // Insert circle run
         insert.run(
           coilRow.id,
           runDate,
@@ -1448,6 +1449,16 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
           plSize,
           plWt || null
         );
+
+        // ✅ Deduct from coil_stock (same logic as manual run)
+        run(
+          `UPDATE coil_stock 
+             SET available_weight_kg = MAX(0, available_weight_kg - ?), 
+                 updated_at=datetime('now') 
+           WHERE coil_id=?`,
+          [netWeight, coilRow.id]
+        );
+
         inserted++;
       }
     });
