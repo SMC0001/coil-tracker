@@ -119,7 +119,8 @@ CREATE TABLE IF NOT EXISTS circle_runs (
   scrap_weight_kg REAL,                   -- scrap from this run
   patta_size TEXT,                        -- e.g. "50mm"
   patta_weight_kg REAL,                   -- patta total weight
-  created_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_circle_runs_coil ON circle_runs(coil_id);
