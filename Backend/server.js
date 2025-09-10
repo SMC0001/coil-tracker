@@ -4400,5 +4400,19 @@ app.get("/api/debug/pl-stock", (req, res) => {
   }
 });
 
+// TEMP: Delete specific PL stock by production_date
+app.delete('/api/debug/delete-plstock', auth("admin"), (req, res) => {
+  const { production_date } = req.query;
+  if (!production_date) return res.status(400).json({ error: "production_date param required" });
+
+  try {
+    const info = run(`DELETE FROM pl_stock WHERE production_date = ?`, [production_date]);
+    res.json({ ok: true, deleted: info.changes });
+  } catch (err) {
+    console.error("❌ SQL delete failed:", err.message);
+    res.status(500).json({ error: "Failed to delete PL stock" });
+  }
+});
+
 app.listen(PORT, () => console.log("API running on :" + PORT));
 
