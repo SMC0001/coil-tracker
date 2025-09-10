@@ -1376,6 +1376,7 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
 });
 
 // Bulk Import Circle Runs from Excel
+// Bulk Import Circle Runs from Excel
 app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -1385,7 +1386,7 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
     const rows = xlsx.utils.sheet_to_json(sheet);
     if (!rows.length) return res.status(400).json({ error: "No rows found in worksheet" });
 
-    const insert = db.prepare(`
+    const insertRun = db.prepare(`
       INSERT INTO circle_runs (
         coil_id, run_date, operator,
         net_weight_kg, op_size_mm, circle_weight_kg, qty,
@@ -1435,7 +1436,7 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
         }
 
         // Insert circle run
-        insert.run(
+        insertRun.run(
           coilRow.id,
           runDate,
           operator || null,
@@ -1450,7 +1451,10 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
           plWt || null
         );
 
-        // ✅ Deduct from coil_stock (same logic as manual run)
+        // ✅ Get last run id
+        const runId = get("SELECT last_insert_rowid() AS id").id;
+
+        // ✅ Deduct from coil_stock
         run(
           `UPDATE coil_stock 
              SET available_weight_kg = MAX(0, available_weight_kg - ?), 
@@ -1458,6 +1462,21 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
            WHERE coil_id=?`,
           [netWeight, coilRow.id]
         );
+
+        // ✅ Insert/update circle_stock
+        if (circleWt > 0 && qty > 0) {
+          run(
+            `INSERT INTO circle_stock (source_type, source_id, size_mm, weight_kg, qty, production_date, operator, created_at, updated_at)
+             VALUES ('circle', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+             ON CONFLICT(source_type, source_id) DO UPDATE SET
+               size_mm = excluded.size_mm,
+               weight_kg = excluded.weight_kg,
+               qty = excluded.qty,
+               operator = excluded.operator,
+               updated_at = datetime('now')`,
+            [runId, opSize || null, circleWt, qty, runDate, operator || null]
+          );
+        }
 
         inserted++;
       }
