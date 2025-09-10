@@ -1718,35 +1718,9 @@ app.post('/api/circle-runs/bulk-start', auth(), (req, res) => {
     `);
 
     const insertRun = db.prepare(`
-  INSERT INTO circle_runs (coil_id, operator, run_date, grade, thickness, width, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-`);
-
-const tx = db.transaction((ids) => {
-  for (const coilId of ids) {
-    const exists = checkExists.get(coilId, dateStr);
-    if (exists) {
-      results.skipped++;
-      results.skipped_ids.push(coilId);
-      continue;
-    }
-
-    // ✅ Fetch coil details for grade/thickness/width
-    const coil = get(`SELECT grade, thickness, width FROM coils WHERE id=?`, [coilId]);
-
-    const info = insertRun.run(
-      coilId,
-      operator,
-      dateStr,
-      coil?.grade || null,
-      coil?.thickness || null,
-      coil?.width || null
-    );
-
-    results.started++;
-    results.created_ids.push(info.lastInsertRowid);
-  }
-});
+      INSERT INTO circle_runs (coil_id, operator, run_date, grade, thickness, width, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    `);
 
     const results = { started: 0, skipped: 0, created_ids: [], skipped_ids: [] };
 
@@ -1758,13 +1732,26 @@ const tx = db.transaction((ids) => {
           results.skipped_ids.push(coilId);
           continue;
         }
-        const info = insertRun.run(coilId, operator, dateStr);
+
+        // ✅ Fetch coil details for grade/thickness/width
+        const coil = get(`SELECT grade, thickness, width FROM coils WHERE id=?`, [coilId]);
+
+        const info = insertRun.run(
+          coilId,
+          operator,
+          dateStr,
+          coil?.grade || null,
+          coil?.thickness || null,
+          coil?.width || null
+        );
+
         results.started++;
         results.created_ids.push(info.lastInsertRowid);
       }
     });
 
     tx(coil_ids);
+
     res.json({
       ok: true,
       ...results,
