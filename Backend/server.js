@@ -4401,7 +4401,7 @@ app.get("/api/debug/pl-stock", (req, res) => {
 });
 
 // TEMP: Delete specific PL stock by production_date
-app.get('/api/debug/delete-plstock', auth("admin"), (req, res) => {
+app.get('/api/debug/delete-plstock', (req, res) => {
   const { production_date } = req.query;
   if (!production_date) return res.status(400).json({ error: "production_date param required" });
 
