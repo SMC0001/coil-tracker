@@ -95,6 +95,14 @@ try {
   }
 }
 
+try {
+  db.prepare(`ALTER TABLE circle_stock ADD COLUMN updated_at TEXT`).run();
+} catch (e) {
+  if (!String(e.message).includes("duplicate column name")) {
+    console.error("Migration failed (circle_stock.updated_at):", e.message);
+  }
+}
+
 // ✅ orders table migrations (idempotent)
 try { db.prepare(`ALTER TABLE orders ADD COLUMN thickness_mm REAL`).run(); } catch {}
 try { db.prepare(`ALTER TABLE orders ADD COLUMN op_size_mm REAL`).run(); } catch {}
@@ -1375,7 +1383,6 @@ app.post("/api/orders/import", auth("admin"), upload.single("file"), (req, res) 
   }
 });
 
-// Bulk Import Circle Runs from Excel
 // Bulk Import Circle Runs from Excel
 app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, res) => {
   try {
