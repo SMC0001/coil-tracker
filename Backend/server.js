@@ -1476,6 +1476,8 @@ app.post("/api/circle-runs/import", auth("admin"), upload.single("file"), (req, 
             `INSERT INTO circle_stock (source_type, source_id, size_mm, weight_kg, qty, production_date, operator, created_at, updated_at)
              VALUES ('circle', ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
              ON CONFLICT(source_type, source_id) DO UPDATE SET
+               grade = excluded.grade,
+               thickness_mm = excluded.thickness_mm,
                size_mm = excluded.size_mm,
                weight_kg = excluded.weight_kg,
                qty = excluded.qty,
