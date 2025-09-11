@@ -538,30 +538,37 @@ function OrdersTab() {
         </form>
 
         {/* Orders table */}
-        <StickyTable
-          headers={[
-            { label: <input
-                type="checkbox"
-                checked={selectedIds.length === rows.length && rows.length > 0}
-                onChange={toggleSelectAll}
-              />, className: "w-6" },
-            { label: "Order No", className: "w-20" },
-            { label: "Order Date", className: "w-28" },
-            { label: "Order By", className: "w-28" },
-            { label: "Company", className: "w-36" },
-            { label: "Grade", className: "w-24" },
-            { label: "Thickness", className: "w-24" },
-            { label: "Op. Size (mm)", className: "w-28" },
-            { label: "Ordered Pcs", className: "text-right w-28" },
-            { label: "Ordered (kg)", className: "text-right w-36" },
-            { label: "Fulfilled (kg)", className: "text-right w-36" },
-            { label: "Remaining (kg)", className: "text-right w-40" },
-            { label: "Cancelled On", className: "pl-3 w-36" },
-            { label: "Remarks", className: "pl-3 w-44" },
-            { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
-            { label: "Actions", className: "pl-4 w-40" },
-          ]}
-        >
+<StickyTable
+  headers={[
+    { label: <input
+        type="checkbox"
+        checked={selectedIds.length === rows.length && rows.length > 0}
+        onChange={toggleSelectAll}
+      />, className: "w-6" },
+    { label: "Order No", className: "w-20" },
+    { label: "Order Date", className: "w-28" },
+    { label: "Order By", className: "w-28" },
+    { label: "Company", className: "w-36" },
+    { label: "Grade", className: "w-24" },
+    { label: "Thickness", className: "w-24" },
+    { label: "Op. Size (mm)", className: "w-28" },
+    { label: "Ordered Pcs", className: "text-right w-28" },
+    { label: "Ordered (kg)", className: "text-right w-36" },
+    { label: "Fulfilled (kg)", className: "text-right w-36" },
+    { label: "Remaining (kg)", className: "text-right w-40" },
+
+    // 👇 Only show these if viewing cancelled
+    ...(view === "cancelled"
+      ? [
+          { label: "Cancelled On", className: "pl-3 w-36" },
+          { label: "Remarks", className: "pl-3 w-44" },
+        ]
+      : []),
+
+    { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
+    { label: "Actions", className: "pl-4 w-40" },
+  ]}
+/>
           {rows.map((o) => {
             const isEdit = editingId === o.order_no && view !== "cancelled";
             return (
@@ -692,9 +699,12 @@ function OrdersTab() {
                 <td className="text-right">{fmt(o.fulfilled_weight_kg)}</td>
                 <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
 
-                {/* Cancelled On */}
-                <td className="pl-3">{fmtDate(o.cancelled_at)}</td>
-                <td className="pl-3">{o.cancel_remarks || "—"}</td>
+                {view === "cancelled" && (
+  <>
+    <td className="pl-3">{fmtDate(o.cancelled_at)}</td>
+    <td className="pl-3">{o.cancel_remarks || "—"}</td>
+  </>
+)}
 
                 {/* Status */}
                 <td className="pl-3 border-l border-slate-200">
@@ -746,9 +756,12 @@ function OrdersTab() {
           })}
           {!rows.length && (
             <tr>
-              <td className="py-4 text-slate-500" colSpan={16}>
-                {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
-              </td>
+              <td
+  className="py-4 text-slate-500"
+  colSpan={view === "cancelled" ? 16 : 14}
+>
+  {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
+</td>
             </tr>
           )}
         </StickyTable>
