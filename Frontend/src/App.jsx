@@ -709,8 +709,7 @@ function OrdersTab() {
                 <td className="pl-3 border-l border-slate-200">
                   {renderStatus(o.status, o.cancelled_at)}
                 </td>
-
-                {/* Actions */}
+{/* Actions */}
 <td className="whitespace-nowrap pl-4">
   {isEdit ? (
     <>
@@ -729,29 +728,34 @@ function OrdersTab() {
     </>
   ) : (
     <>
-      <button
-        className="px-2 py-1 rounded border"
-        onClick={() => startEdit(o)}
-      >
-        Edit
-      </button>
-
-      {/* Cancel button always shown */}
-      <button
-        className="px-2 py-1 rounded border border-rose-300 text-rose-600 ml-2"
-        onClick={() => cancelOrder(o.order_no)}
-      >
-        Cancel
-      </button>
-
-      {/* Delete button only in Open Orders */}
-      {view === "open" && (
+      {view === "cancelled" ? (
         <button
-          className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50 ml-2"
-          onClick={() => deleteOrder(o.order_no)}
+          className="px-2 py-1 rounded border border-emerald-300 text-emerald-600"
+          onClick={() => uncancelOrder(o.order_no)}
         >
-          Del
+          Uncancel
         </button>
+      ) : (
+        <>
+          <button
+            className="px-2 py-1 rounded border"
+            onClick={() => startEdit(o)}
+          >
+            Edit
+          </button>
+          <button
+            className="px-2 py-1 rounded border border-rose-300 text-rose-600 ml-2"
+            onClick={() => cancelOrder(o.order_no)}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50 ml-2"
+            onClick={() => deleteOrder(o.order_no)}
+          >
+            Del
+          </button>
+        </>
       )}
     </>
   )}
