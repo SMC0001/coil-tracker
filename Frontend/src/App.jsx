@@ -557,7 +557,6 @@ function OrdersTab() {
     { label: "Fulfilled (kg)", className: "text-right w-36" },
     { label: "Remaining (kg)", className: "text-right w-40" },
 
-    // 👇 Only show these if viewing cancelled
     ...(view === "cancelled"
       ? [
           { label: "Cancelled On", className: "pl-3 w-36" },
@@ -568,7 +567,7 @@ function OrdersTab() {
     { label: "Status", className: "pl-3 w-36 border-l border-slate-200" },
     { label: "Actions", className: "pl-4 w-40" },
   ]}
-/>
+>
           {rows.map((o) => {
             const isEdit = editingId === o.order_no && view !== "cancelled";
             return (
@@ -754,17 +753,17 @@ function OrdersTab() {
               </tr>
             );
           })}
-          {!rows.length && (
-            <tr>
-              <td
-  className="py-4 text-slate-500"
-  colSpan={view === "cancelled" ? 16 : 14}
->
-  {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
-</td>
-            </tr>
-          )}
-        </StickyTable>
+{!rows.length && (
+    <tr>
+      <td
+        className="py-4 text-slate-500"
+        colSpan={view === "cancelled" ? 16 : 14}
+      >
+        {view === "cancelled" ? "No cancelled orders." : "No orders yet."}
+      </td>
+    </tr>
+  )}
+</StickyTable>
       </Section>
 
       {/* Cancel popup */}
