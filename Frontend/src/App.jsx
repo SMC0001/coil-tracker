@@ -711,45 +711,51 @@ function OrdersTab() {
                 </td>
 
                 {/* Actions */}
-                <td className="whitespace-nowrap pl-4">
-                  {isEdit ? (
-                    <>
-                      <button
-                        className="px-2 py-1 rounded bg-emerald-600 text-white"
-                        onClick={() => saveEdit(o.order_no)}
-                      >
-                        Save
-                      </button>
-                      <button
-                        className="px-2 py-1 rounded border ml-2"
-                        onClick={cancelEdit}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        className="px-2 py-1 rounded border"
-                        onClick={() => startEdit(o)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="px-2 py-1 rounded border border-rose-300 text-rose-600"
-                        onClick={() => cancelOrder(o.order_no)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50"
-                        onClick={() => deleteOrder(o.order_no)}
-                      >
-                        Del
-                      </button>
-                    </>
-                  )}
-                </td>
+<td className="whitespace-nowrap pl-4">
+  {isEdit ? (
+    <>
+      <button
+        className="px-2 py-1 rounded bg-emerald-600 text-white"
+        onClick={() => saveEdit(o.order_no)}
+      >
+        Save
+      </button>
+      <button
+        className="px-2 py-1 rounded border ml-2"
+        onClick={cancelEdit}
+      >
+        Cancel
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        className="px-2 py-1 rounded border"
+        onClick={() => startEdit(o)}
+      >
+        Edit
+      </button>
+
+      {/* Cancel button always shown */}
+      <button
+        className="px-2 py-1 rounded border border-rose-300 text-rose-600 ml-2"
+        onClick={() => cancelOrder(o.order_no)}
+      >
+        Cancel
+      </button>
+
+      {/* Delete button only in Open Orders */}
+      {view === "open" && (
+        <button
+          className="px-2 py-1 text-red-600 border border-red-300 rounded hover:bg-red-50 ml-2"
+          onClick={() => deleteOrder(o.order_no)}
+        >
+          Del
+        </button>
+      )}
+    </>
+  )}
+</td>
               </tr>
             );
           })}
