@@ -463,14 +463,16 @@ function OrdersTab() {
               />
             </label>
 
-            {/* Bulk Delete */}
-            <button
-              onClick={bulkDelete}
-              className="bg-red-600 text-white px-3 rounded-lg disabled:opacity-50 h-10"
-              disabled={!selectedIds.length}
-            >
-              Delete Selected
-            </button>
+            {/* Bulk Delete - only in Open Orders */}
+{view === "open" && (
+  <button
+    onClick={bulkDelete}
+    className="bg-red-600 text-white px-3 rounded-lg disabled:opacity-50 h-10"
+    disabled={!selectedIds.length}
+  >
+    Delete Selected
+  </button>
+)}
           </div>
         }
       >
