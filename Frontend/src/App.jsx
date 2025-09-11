@@ -50,7 +50,11 @@ function NumberInput(props) {
 }
 const fmt = (v) =>
   (v ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
-const fmtDate = (iso) => (iso ? iso.slice(0, 10) : "—");
+const fmtDate = (iso) => {
+  if (!iso) return "—";
+  const [year, month, day] = iso.split("-");
+  return `${day}/${month}/${year}`;
+};
 
 
 function ExportSheetButton({ tab }) {
@@ -227,7 +231,7 @@ function OrdersTab() {
   const startEdit = (o) => {
     setEditingId(o.order_no);
     setDraft({
-      order_date: fmtDate(o.order_date) || "",
+      order_date: o.order_date || "",
       order_by: o.order_by || "",
       company: o.company || "",
       grade: o.grade || "",
@@ -583,7 +587,7 @@ function OrdersTab() {
                       onChange={(e) => setDraft({ ...draft, order_date: e.target.value })}
                     />
                   ) : (
-                    o.order_date || "—"
+                    fmtDate(o.order_date)
                   )}
                 </td>
 
@@ -689,7 +693,7 @@ function OrdersTab() {
                 <td className="text-right">{fmt(o.remaining_weight_kg)}</td>
 
                 {/* Cancelled On */}
-                <td className="pl-3">{o.cancelled_at || "—"}</td>
+                <td className="pl-3">{fmtDate(o.cancelled_at)}</td>
                 <td className="pl-3">{o.cancel_remarks || "—"}</td>
 
                 {/* Status */}
@@ -870,7 +874,7 @@ function DispatchedTab() {
     rows.map((o) => (
       <tr key={o.order_no} className="border-t">
         <td className="px-3 py-2.5">{o.order_no}</td>
-        <td className="px-3 py-2.5">{o.order_date || "—"}</td>
+        <td className="px-3 py-2.5">{fmtDate(o.order_date)}</td>
         <td className="px-3 py-2.5">{o.order_by || "—"}</td>
         <td className="px-3 py-2.5">{o.company || "—"}</td>
         <td className="px-3 py-2.5">{o.grade || "—"}</td>
@@ -1382,7 +1386,7 @@ function Coils({ onStartedCircle }) {
               .join(" × ") || "—"}
           </td>
           <td>{row.supplier || "—"}</td>
-          <td>{row.purchase_date || "—"}</td>
+          <td>{fmtDate(row.purchase_date)}</td>
           <td className="text-right">{fmt(row.purchased_kg)}</td>
           <td className="text-right">
             {row.purchase_price == null ? "—" : Number(row.purchase_price).toFixed(2)}
@@ -1440,7 +1444,7 @@ function Coils({ onStartedCircle }) {
                     <div><b>Thickness:</b> {s.thickness ?? "—"} mm</div>
                     <div><b>Width:</b> {s.width ?? "—"} mm</div>
                     <div><b>Supplier:</b> {s.supplier || "—"}</div>
-                    <div><b>Purchased On:</b> {s.purchase_date || "—"}</div>
+                    <div><b>Purchased On:</b> {fmtDate(s.purchase_date)}</div>
                     <div>
                       <b>Purchase Price:</b>{" "}
                       {s.purchase_price == null ? "—" : Number(s.purchase_price).toFixed(2)} ₹/kg
@@ -2548,7 +2552,7 @@ const Head = ({ children, w, right, className = "" }) => (
               className="border rounded px-2 py-1 w-[130px]"
             />
           ) : (
-            r.run_date || "—"
+            fmtDate(r.run_date)
           )}
         </td>
 
@@ -2919,7 +2923,7 @@ function ScrapTab() {
           const rem = getRemaining(r);
           return (
             <tr key={key} className="border-t">
-              <td>{r.date ?? "—"}</td>
+              <td>{fmtDate(r.date)}</td>
               <td>{r.rn ?? "—"}</td>
               <td className="capitalize">{r.source_type ?? "—"}</td>
               <td>{r.grade ?? "—"}</td>
@@ -2976,7 +2980,7 @@ function ScrapTab() {
         >
           {sales.map((s) => (
             <tr key={s.id} className="border-t">
-              <td>{s.sale_date ?? "—"}</td>
+              <td>{fmtDate(s.sale_date)}</td>
               <td>{s.buyer ?? "—"}</td>
               <td>{s.grade ?? "—"}</td>
               <td>{s.rn ?? "—"}</td>
@@ -3993,7 +3997,7 @@ function PLStockTab() {
 >
   {rows.map((r) => (
     <tr key={r.id} className="border-t">
-      <td>{r.production_date}</td>
+      <td>{fmtDate(r.production_date)}</td>
       <td>{r.source_ref}</td>
       <td>{r.grade || "—"}</td>
       <td className="text-right">{r.thickness_mm ?? r.thickness ?? "—"}</td>
@@ -4062,7 +4066,7 @@ function PLSalesTab() {
 >
   {sales.map((s) => (
     <tr key={s.id} className="border-t">
-      <td>{s.sale_date}</td>
+      <td>{fmtDate(s.sale_date)}</td>
       <td>{s.source_ref}</td>
       <td>{s.grade || "—"}</td>
       <td className="text-right">{s.thickness_mm ?? s.thickness ?? "—"}</td>
@@ -4305,7 +4309,7 @@ function CoilStockTab() {
           .join(" × ") || "—"}
       </td>
       <td>{s.supplier || "—"}</td>
-      <td>{s.purchase_date || "—"}</td>
+      <td>{fmtDate(s.purchase_date)}</td>
       <td className="text-right font-semibold">
         {fmt(s.available_weight_kg)}
       </td>
@@ -4430,7 +4434,7 @@ function CoilSalesTab() {
 >
   {sales.map((s) => (
     <tr key={s.id} className="border-t">
-      <td>{s.sale_date}</td>
+      <td>{fmtDate(s.sale_date)}</td>
       <td>{s.rn}</td>
       <td>{s.grade}</td>
       <td className="text-right">{fmt(s.sold_weight_kg)}</td>
@@ -4502,7 +4506,7 @@ function CircleStockTab() {
 >
   {rows.map((s) => (
     <tr key={s.id} className="border-t">
-      <td>{s.production_date}</td>
+      <td>{fmtDate(s.production_date)}</td>
       <td>{s.source_ref}</td>
       <td>{s.source_type === "patta" ? "Patta" : "Circle"}</td>
       <td>{s.grade || "—"}</td>
@@ -4896,7 +4900,7 @@ function CircleSalesTab() {
 >
   {sales.map((s) => (
     <tr key={s.id} className="border-t">
-      <td>{s.sale_date}</td>
+      <td>{fmtDate(s.sale_date)}</td>
       <td>{s.source_ref}</td>
       <td>{s.grade ?? "—"}</td>
       <td>{s.thickness_mm ?? s.thickness ?? "—"}</td>
