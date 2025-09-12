@@ -845,10 +845,14 @@ if (body.orderBy !== undefined && body.order_by === undefined) body.order_by = b
     }
   }
 
+  
   if (fields.length) {
     fields.push(`updated_at = datetime('now')`);
     params.push(req.params.order_no);
     run(`UPDATE orders SET ${fields.join(', ')} WHERE id = ?`, params);
+
+    // ✅ Recompute status immediately after editing
+    recomputeOrder(req.params.order_no);
   }
 
   res.json(get(`
